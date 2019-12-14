@@ -1,0 +1,30 @@
+name:                aoc
+version:             0.1.0.0
+github:              "nilsalex/aoc"
+license:             BSD3
+author:              "Nils Alex"
+maintainer:          "nils@famalex.de"
+copyright:           "2019 Nils Alex"
+
+extra-source-files:
+- README.md
+- ChangeLog.md
+
+description:         Please see the README on GitHub at <https://github.com/githubuser/aoc#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+
+library:
+  source-dirs: src
+
+executables:
+  aoc-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - aoc
