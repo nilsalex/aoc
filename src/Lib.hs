@@ -5,6 +5,7 @@ module Lib
 import A01
 import A02
 import A03
+import A04
 
 someFunc :: IO ()
 someFunc = do
@@ -24,3 +25,8 @@ someFunc = do
             putStrLn "Day 3:"
             putStrLn $ "Answer 1 : " ++ (show $ a03_ans1 a03_i)
             putStrLn $ "Answer 2 : " ++ (show $ a03_ans2 a03_i)
+
+            putStrLn ""
+            putStrLn "Day 4:"
+            putStrLn $ "Answer 1 : " ++ (show a04_ans1)
+            putStrLn $ "Answer 2 : " ++ (show a04_ans2)
