@@ -4,6 +4,7 @@ module Lib
 
 import A01
 import A02
+import A03
 
 someFunc :: IO ()
 someFunc = do
@@ -18,3 +19,8 @@ someFunc = do
             putStrLn $ "Answer 1 : " ++ (show $ a02_ans1 a02_i)
             putStrLn $ "Answer 2 : " ++ (show $ a02_ans2 a02_i)
 
+            a03_i <- a03_input
+            putStrLn ""
+            putStrLn "Day 3:"
+            putStrLn $ "Answer 1 : " ++ (show $ a03_ans1 a03_i)
+            putStrLn $ "Answer 2 : " ++ (show $ a03_ans2 a03_i)

@@ -10,13 +10,13 @@ mult :: Int
 mult = 2
 
 run :: [Int] -> [Int]
-run = run'' 0
+run = run' 0
 
-run'' :: Int -> [Int] -> [Int]
-run'' pos xs
+run' :: Int -> [Int] -> [Int]
+run' pos xs
     | opcode == stop = xs
-    | opcode == add  = run'' pos' $ modify ires (const s) xs
-    | opcode == mult = run'' pos' $ modify ires (const m) xs
+    | opcode == add  = run' pos' $ modify ires (const s) xs
+    | opcode == mult = run' pos' $ modify ires (const m) xs
     | otherwise = error $ show (pos, xs)
   where
     opcode = xs !! pos
@@ -30,28 +30,6 @@ run'' pos xs
     m = a * b
 
     pos' = pos + 4
-
-run' :: ([Int], [Int]) -> ([Int], [Int])
-run' (xs, ys@(y:ys'))
-    | y == stop = (xs, ys)
-    | y == add = let (xs_new, ys_new) = update ires s xs ys
-                 in run' (xs_new ++ take 4 ys_new, drop 4 ys_new)
-    | y == mult = let (xs_new, ys_new) = update ires m xs ys
-                  in run' (xs_new ++ take 4 ys_new, drop 4 ys_new)
-    | otherwise = error $ show xs ++ " ## " ++ show y ++ " ## " ++ show ys'
-  where
-    [ia, ib, ires] = take 3 ys'
-
-    a = (xs ++ ys) !! ia
-    b = (xs ++ ys) !! ib
-
-    s = a + b
-    m = a * b
-
-    update _i _r _xs _ys = 
-      if _i < length _xs
-      then (modify _i (const _r) _xs, _ys)
-      else (_xs, modify _i (const _r) _ys)
 
 modify :: Int -> (a -> a) -> [a] -> [a]
 modify i f [] = []
