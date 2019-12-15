@@ -1,9 +1,13 @@
-module A05 (a05_run1,a05_input) where
+module A05 (a05_run,a05_input) where
 
 data Op = Add Int Int Int Bool Bool Bool |
           Mult Int Int Int Bool Bool Bool |
           Get Int Bool |
           Put Int Bool |
+          JumpIf Int Int Bool Bool |
+          JumpIfNot Int Int Bool Bool |
+          Less Int Int Int Bool Bool Bool |
+          Equals Int Int Int Bool Bool Bool |
           Stop
 
 add :: Int
@@ -18,17 +22,34 @@ get = 3
 put :: Int
 put = 4
 
+jumpIf :: Int
+jumpIf = 5
+
+jumpIfNot :: Int
+jumpIfNot = 6
+
+less :: Int
+less = 7
+
+equals :: Int
+equals = 8
+
 stop :: Int
 stop = 99
 
-op :: [Int] -> Op
-op (x:xs)
+op :: Int -> [Int] -> Op
+op pos xs'
     | o == add = Add p1 p2 p3 b1 b2 b3
     | o == mult = Mult p1 p2 p3 b1 b2 b3
     | o == get = Get p1 b1
     | o == put = Put p1 b1
+    | o == jumpIf = JumpIf p1 p2 b1 b2
+    | o == jumpIfNot = JumpIfNot p1 p2 b1 b2
+    | o == less = Less p1 p2 p3 b1 b2 b3
+    | o == equals = Equals p1 p2 p3 b1 b2 b3
     | o == stop = Stop
   where
+    (x:xs) = drop pos xs'
     m1 = x `div` 10000
     m2 = (x `mod` 10000) `div` 1000
     m3 = ((x `mod` 10000) `mod` 1000) `div` 100
@@ -39,17 +60,29 @@ op (x:xs)
 
     b i = i /= 0
 
-runOp :: Op -> [Int] -> IO (Either [Int] (Int, [Int]))
-runOp op xs =
+runOp :: Op -> Int -> [Int] -> IO (Either [Int] (Int, [Int]))
+runOp op pos xs =
     case op of
-      Add a b c ma mb mc  -> pure $ Right $ (4, write c mc $ look a ma + look b mb)
-      Mult a b c ma mb mc -> pure $ Right $ (4, write c mc $ look a ma * look b mb)
+      Add a b c ma mb mc  -> pure $ Right $ (pos + 4, write c mc $ look a ma + look b mb)
+      Mult a b c ma mb mc -> pure $ Right $ (pos + 4, write c mc $ look a ma * look b mb)
       Get a ma            -> do
                               s <- getLine
-                              pure $ Right $ (2, write a ma (read s :: Int))
+                              pure $ Right $ (pos + 2, write a ma (read s :: Int))
       Put a ma            -> do
                               print $ look a ma
-                              pure $ Right (2, xs)
+                              pure $ Right (pos + 2, xs)
+      JumpIf a b ma mb    -> case look a ma of
+                              0 -> pure $ Right (pos + 3, xs)
+                              _ -> pure $ Right (look b mb, xs)
+      JumpIfNot a b ma mb -> case look a ma of
+                              0 -> pure $ Right (look b mb, xs)
+                              _ -> pure $ Right (pos + 3, xs)
+      Less a b c ma mb mc -> pure $ Right $ (pos + 4, write c mc $ case look a ma < look b mb of
+                                                                     True  -> 1
+                                                                     False -> 0)
+      Equals a b c ma mb mc -> pure $ Right $ (pos + 4, write c mc $ case look a ma == look b mb of
+                                                                       True  -> 1
+                                                                       False -> 0)
       Stop                -> pure $ Left xs
   where
     look i mi = case mi of
@@ -59,17 +92,17 @@ runOp op xs =
                      True -> error ""
                      False -> modify i (const v) xs
 
-run :: [Int] -> IO [Int]
+run :: [Int] -> IO (Int, [Int])
 run = run' 0
 
-run' :: Int -> [Int] -> IO [Int]
+run' :: Int -> [Int] -> IO (Int, [Int])
 run' pos xs = do
-               r <- runOp o xs
+               r <- runOp o pos xs
                case r of
-                 Left xs' -> return xs'
-                 Right (s, xs') -> run' (pos + s) xs'
+                 Left xs' -> return (pos, xs')
+                 Right (pos', xs') -> run' pos' xs'
   where
-    o = op $ drop pos xs
+    o = op pos xs
 
 modify :: Int -> (a -> a) -> [a] -> [a]
 modify i f [] = []
@@ -99,5 +132,5 @@ a05_input = loadProgramme fileName
 prepare :: Int -> Int -> [Int] -> [Int]
 prepare n v (x:_:_:xs) = x:n:v:xs
 
-a05_run1 :: [Int] -> IO Int
-a05_run1 = fmap head . run
+a05_run :: [Int] -> IO Int
+a05_run = fmap (head . snd) . run

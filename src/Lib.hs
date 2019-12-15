@@ -40,6 +40,12 @@ someFunc = do
             putStrLn $ "Run 1 : "
             putStr "Enter 1 : "
             hFlush stdout
-            res <- a05_run1 a05_i
+            res <- a05_run a05_i
+            
+            putStrLn ""
+            putStrLn $ "Run 2 : "
+            putStr "Enter 5 : "
+            hFlush stdout
+            res <- a05_run a05_i
             
             return ()
