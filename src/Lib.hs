@@ -9,6 +9,7 @@ import A02
 import A03
 import A04
 import A05
+import A06
 
 someFunc :: IO ()
 someFunc = do
@@ -47,5 +48,10 @@ someFunc = do
             putStr "Enter 5 : "
             hFlush stdout
             res <- a05_run a05_i
+
+            a06_i <- a06_input
+            putStrLn ""
+            putStrLn "Day 6:"
+            putStrLn $ "Answer 1 : " ++ (show $ a06_ans1 a06_i)
             
             return ()
