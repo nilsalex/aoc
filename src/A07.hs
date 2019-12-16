@@ -1,4 +1,4 @@
-module A07 (a07_input, a07_ans1) where
+module A07 (a07_input, a07_ans1, a07_ans2) where
 
 newtype State s a = State { runState :: s -> (a, s) }
 
@@ -37,44 +37,18 @@ data Op = Add Int Int Int Bool Bool Bool |
           Equals Int Int Int Bool Bool Bool |
           Stop
 
-add :: Int
-add = 1
-
-mult :: Int
-mult = 2
-
-get :: Int
-get = 3
-
-put :: Int
-put = 4
-
-jumpIf :: Int
-jumpIf = 5
-
-jumpIfNot :: Int
-jumpIfNot = 6
-
-less :: Int
-less = 7
-
-equals :: Int
-equals = 8
-
-stop :: Int
-stop = 99
-
-op :: Int -> [Int] -> Op
-op pos xs'
-    | o == add = Add p1 p2 p3 b1 b2 b3
-    | o == mult = Mult p1 p2 p3 b1 b2 b3
-    | o == get = Get p1 b1
-    | o == put = Put p1 b1
-    | o == jumpIf = JumpIf p1 p2 b1 b2
-    | o == jumpIfNot = JumpIfNot p1 p2 b1 b2
-    | o == less = Less p1 p2 p3 b1 b2 b3
-    | o == equals = Equals p1 p2 p3 b1 b2 b3
-    | o == stop = Stop
+op :: Int -> Programme -> Op
+op pos (Programme xs')
+    | o == 1 = Add p1 p2 p3 b1 b2 b3
+    | o == 2 = Mult p1 p2 p3 b1 b2 b3
+    | o == 3 = Get p1'' b1
+    | o == 4 = Put p1'' b1
+    | o == 5 = JumpIf p1' p2' b1 b2
+    | o == 6 = JumpIfNot p1' p2' b1 b2
+    | o == 7 = Less p1 p2 p3 b1 b2 b3
+    | o == 8 = Equals p1 p2 p3 b1 b2 b3
+    | o == 99 = Stop
+    | otherwise = error "Unknown op code"
   where
     (x:xs) = drop pos xs'
     m1 = x `div` 10000
@@ -84,59 +58,109 @@ op pos xs'
 
     [b3, b2, b1] = fmap b [m1, m2, m3]
     [p1, p2, p3] = take 3 xs
+    [p1', p2'] = take 2 xs
+    p1'' = head xs
 
     b i = i /= 0
 
-type ProgState = (Int, [Int], [Int], [Int]) -- instruction pointer,
-                                            -- instruction stack,
-                                            -- input stack,
-                                            -- output stack
+newtype Programme = Programme { fromProgramme :: [Int] } deriving Show
+newtype Buffer    = Buffer { fromBuffer :: [Int] } deriving Show
+data Code      = RUN | HALT deriving Show
+type ProgState = (Code, Int, Programme, Buffer, Buffer)
+type ArrayState = [ProgState]
 
-run :: [Int] -> [Int] -> ProgState
-run prog istack = snd $ (runState eval) state0
+arrayState :: [Int] -> Programme -> ArrayState
+arrayState phases prog =
+  case fmap (\phase -> (RUN, 0, prog, Buffer [phase], Buffer [])) phases of
+    (c,i,p,Buffer is,os):xs ->
+      (c,i,p,Buffer (is ++ [0]),os):xs
+
+carryOutputs :: ArrayState -> ArrayState
+carryOutputs ss = zipWith (\(c,i,p,ib,ob) ob' -> (c,i,p,merge ob' ib,Buffer [])) ss outputs
   where
-    state0 = (0, prog, istack, [])
+    outputs = (\x -> last x : init x) $ fmap (\(_,_,_,_,b) -> b) ss
+    merge (Buffer os) (Buffer is) = Buffer $ reverse os ++ is
+
+{-
+updateLastOut :: State ArrayState ()
+updateLastOut =
+  do
+   (_, ps) <- getS
+   case last ps of
+     (c,i,p,is,Buffer (o:os)) ->
+       putS (o, ps)
+     _ -> return ()
+-}
+
+evalArray :: State ArrayState ()
+evalArray =
+  do
+   modifyS carryOutputs
+   modifyS $ fmap (snd . runState eval)
+   s <- getS
+   case all (\(c,_,_,_,_) -> case c of
+                               HALT -> True
+                               _    -> False) s of
+      True -> return ()
+      False -> evalArray
+
+evalArrayIO :: ArrayState -> IO ()
+evalArrayIO s =
+  do
+    mapM_ print s
+    putStrLn ""
+    l <- getLine
+    case l of
+      'c':_ -> evalArrayIO (carryOutputs s)
+      _  -> evalArrayIO $ fmap (snd . runState eval) s
 
 eval :: State ProgState ()
-eval = do
-         (ip, prog, istack, ostack) <- getS
-         let o = op ip prog
+eval =
+  do
+     (code, ip, prog, istack, ostack) <- getS
+     case code of
+       HALT -> return ()
+       _    -> 
+         let o = op ip prog in
          case o of
            Stop ->
-             return ()
+             putS (HALT, ip, prog, istack, ostack)
            Put a ma ->
-             putS (ip + 2, prog, istack, look a ma prog : ostack) >> eval
+             putS (RUN, ip + 2, prog, istack, Buffer $ look a ma prog : fromBuffer ostack)
            Get a ma ->
-             putS (ip + 2, write a ma (head istack) prog, tail istack, ostack) >> eval
+             case fromBuffer istack of
+               [] -> putS (RUN, ip, prog, istack, ostack)
+               (i:is) -> putS (RUN, ip + 2, write a ma i prog, Buffer is, ostack)
            Add a b c ma mb mc ->
-             putS (ip + 4, write c mc (look a ma prog + look b mb prog) prog, istack, ostack) >> eval
+             putS (RUN, ip + 4, write c mc (look a ma prog + look b mb prog) prog, istack, ostack)
            Mult a b c ma mb mc ->
-             putS (ip + 4, write c mc (look a ma prog * look b mb prog) prog, istack, ostack) >> eval
+             putS (RUN, ip + 4, write c mc (look a ma prog * look b mb prog) prog, istack, ostack)
            Less a b c ma mb mc ->
-             putS (ip + 4, write c mc (i $ look a ma prog < look b mb prog) prog, istack, ostack) >> eval
+             putS (RUN, ip + 4, write c mc (i $ look a ma prog < look b mb prog) prog, istack, ostack)
            Equals a b c ma mb mc ->
-             putS (ip + 4, write c mc (i $ look a ma prog == look b mb prog) prog, istack, ostack) >> eval
+             putS (RUN, ip + 4, write c mc (i $ look a ma prog == look b mb prog) prog, istack, ostack)
            JumpIf a b ma mb ->
              case toB $ look a ma prog of
-               True -> putS (look b mb prog, prog, istack, ostack) >> eval
-               False -> putS (ip + 3, prog, istack, ostack) >> eval
+               True -> putS (RUN, look b mb prog, prog, istack, ostack)
+               False -> putS (RUN, ip + 3, prog, istack, ostack)
            JumpIfNot a b ma mb ->
              case toB $ look a ma prog of
-               False -> putS (look b mb prog, prog, istack, ostack) >> eval
-               True -> putS (ip + 3, prog, istack, ostack) >> eval
+               False -> putS (RUN, look b mb prog, prog, istack, ostack)
+               True -> putS (RUN, ip + 3, prog, istack, ostack)
 
   where
 
-    look i mi xs = case mi of
-                     True -> i
-                     False -> xs !! i
+    look i mi (Programme xs) = case mi of
+                                 True -> i
+                                 False -> xs !! i
 
-    write i mi v xs = case mi of
-                        True -> error ""
-                        False -> modify i (const v) xs
+    write i mi v (Programme xs) = Programme $
+                                  case mi of
+                                    True -> error ""
+                                    False -> modify i (const v) xs
     i False = 0
     i True  = 1
-    toB i = i == 1
+    toB i = i /= 0
 
 modify :: Int -> (a -> a) -> [a] -> [a]
 modify i f [] = []
@@ -151,28 +175,35 @@ splitAt' d xs = case word of
   where
     (word, xs') = (takeWhile (/= d) xs, dropWhile (==d) $ dropWhile (/= d) xs)
 
-ampSeq :: [Int] -> [Int] -> Int
-ampSeq (p:ps) prog = ampSeq' (p:ps) 0
-  where
-    ampSeq' [] x = x
-    ampSeq' (q:qs) x = case run prog [q,x] of
-                         (_, _, _, o:[]) -> ampSeq' qs o
-
 fileName :: String
 fileName = "data/a07/input.txt"
 
-convProgramme :: String -> [Int]
-convProgramme = fmap read . splitAt' ','
+convProgramme :: String -> Programme
+convProgramme = Programme . fmap read . splitAt' ','
 
-loadProgramme :: String -> IO [Int]
+loadProgramme :: String -> IO Programme
 loadProgramme = fmap convProgramme . readFile
 
-a07_input :: IO [Int]
+a07_input :: IO Programme
 a07_input = loadProgramme fileName
 
-a07_ans1 :: [Int] -> Int
-a07_ans1 prog = maximum res
+a07_ans1 :: Programme -> Int
+a07_ans1 prog = maximum scores
   where
-    ps = [[a,b,c,d,e] | a <- [0..4], b <- [0..4], c <- [0..4], d <- [0..4], e <- [0..4],
-                        a /= b, a /= c, a /= d, a /= e, b /= c, b /= d, b /= e, c /= d, c /= e, d /= e]
-    res = fmap (\p -> ampSeq p prog) ps
+    ps = perms 0
+    scores = fmap (\p -> let s0 = arrayState p prog
+                             s1 = snd $ runState evalArray $ s0
+                         in case s1 of
+                              (_,_,_,Buffer (i:_),_):_ -> i) ps
+
+a07_ans2 :: Programme -> Int
+a07_ans2 prog = maximum scores
+  where
+    ps = perms 5
+    scores = fmap (\p -> let s0 = arrayState p prog
+                             s1 = snd $ runState evalArray $ s0
+                         in case s1 of
+                              (_,_,_,Buffer (i:_),_):_ -> i) ps
+
+perms :: Int -> [[Int]]
+perms i = [[a,b,c,d,e] | a <- [i..4+i], b <- [i..4+i], c <- [i..4+i], d <- [i..4+i], e <- [i..4+i], a /= b, a /= c, a /= d, a /= e, b /= c, b /= d, b /= e, c /= d, c /= e, d /= e]
