@@ -13,9 +13,11 @@ import A06
 import A07
 import A08
 import A09
+import A10
 
 someFunc :: IO ()
 someFunc = do
+{-
             a01_i <- a01_input
             putStrLn "Day 1:"
             putStrLn $ "Answer 1 : " ++ (show $ a01_ans1 a01_i)
@@ -76,5 +78,12 @@ someFunc = do
             putStrLn "Day 9:"
             putStrLn $ "Answer 1 : " ++ (show $ a09_ans1 a09_i)
             putStrLn $ "Answer 2 : " ++ (show $ a09_ans2 a09_i)
+            -}
+            
+            a10_i <- a10_input
+            putStrLn ""
+            putStrLn "Day 10:"
+            putStrLn $ "Answer 1 : " ++ (show $ a10_ans1 a10_i)
+            putStrLn $ "Answer 2 : " ++ (show $ a10_ans2 a10_i)
 
             return ()
