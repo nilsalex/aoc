@@ -74,13 +74,13 @@ history :: [(Pos, Pos)] -> [[(Pos, Pos)]]
 history i = i : history (step i)
 
 findRep :: [(Int, Int)] -> Int
-findRep i = go 0 [i]
+findRep i = go 0 i
   where
-    go n (x:hs) =
+    go n x =
       let x' = step1d x in
-      case x' `elem` hs of
+      case x' == i of
         True -> (n+1)
-        False -> go (n+1) (x':x:hs)
+        False -> go (n+1) x'
 
 a12_ans1 :: Int
 a12_ans1 = total $ simulate 1000 $ initial
@@ -88,9 +88,9 @@ a12_ans1 = total $ simulate 1000 $ initial
 a12_ans2 :: Int
 a12_ans2 = lcm x_rep $ lcm y_rep z_rep
   where
-    x_only = fmap (\((x,_,_), (v,_,_)) -> (x,v)) initial'
-    y_only = fmap (\((_,y,_), (_,v,_)) -> (y,v)) initial'
-    z_only = fmap (\((_,_,z), (_,_,v)) -> (z,v)) initial'
+    x_only = fmap (\((x,_,_), (v,_,_)) -> (x,v)) initial
+    y_only = fmap (\((_,y,_), (_,v,_)) -> (y,v)) initial
+    z_only = fmap (\((_,_,z), (_,_,v)) -> (z,v)) initial
     x_rep = findRep x_only
     y_rep = findRep y_only
     z_rep = findRep z_only
