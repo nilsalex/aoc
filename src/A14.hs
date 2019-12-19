@@ -77,6 +77,13 @@ getFuel = left . head . filter (\(Reaction (Reactant n _) _) -> n == "FUEL")
 getRem :: [Reaction] -> [Reaction]
 getRem = remove' (Reactant "FUEL" 1)
 
+oreNeed :: Int -> [Reaction] -> Int
+oreNeed f rs = quantity (head $ snd $ solution)
+  where
+    s0 = (rs, [Reactant { substance = "FUEL", quantity = f }])
+    results = iterate substitute s0
+    solution = head $ dropWhile (not . null . fst) results
+
 fileName :: String
 fileName = "data/a14/input.txt"
 
@@ -86,11 +93,21 @@ a14_input = do
              return $ sort $ fmap (parseReaction) $ lines content
 
 a14_ans1 :: [Reaction] -> Int
-a14_ans1 rs = quantity (head $ snd $ solution)
-  where
-    s0 = (getRem rs, getFuel rs)
-    results = iterate substitute s0
-    solution = head $ dropWhile (not . null . fst) results
+a14_ans1 = oreNeed 1
 
 a14_ans2 :: [Reaction] -> Int
-a14_ans2 _ = 0
+a14_ans2 rs = res
+  where
+    res = search (\i -> oreNeed i rs) 1000000000000 0 10000000
+
+search :: (Int -> Int) -> Int -> Int -> Int -> Int
+search pred target xmin xmax
+  | xmin == xmax = xmin
+  | xmin + 1 == xmax = xmin
+  | otherwise = case p `compare` target of
+                          LT -> search pred target mid xmax
+                          EQ -> mid
+                          GT -> search pred target xmin mid
+  where
+    mid = xmin + ((xmax - xmin) `div` 2)
+    p = pred mid
