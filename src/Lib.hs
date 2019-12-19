@@ -17,6 +17,7 @@ import A10
 import A11
 import A12
 import A13
+import A14
 
 someFunc :: IO ()
 someFunc = do
@@ -105,5 +106,11 @@ someFunc = do
             a13_i <- a13_input
             game a13_i
 -}
+
+            a14_i <- a14_input
+            putStrLn ""
+            putStrLn "Day 14:"
+            putStrLn $ "Answer 1 : " ++ (show $ a14_ans1 a14_i)
+            putStrLn $ "Answer 2 : " ++ (show $ a14_ans2 a14_i)
 
             return ()
