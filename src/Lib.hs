@@ -117,7 +117,7 @@ someFunc = do
             a15_i <- a15_input
             putStrLn ""
             putStrLn "Day 15:"
-            --putStrLn $ "Answer 1 : " ++ (show $ a15_ans1 a15_i)
-            --putStrLn $ "Answer 2 : " ++ (show $ a15_ans2 a15_i)
+            putStrLn $ "Answer 1 : " ++ (show $ a15_ans1 a15_i)
+            putStrLn $ "Answer 2 : " ++ (show $ a15_ans2 a15_i)
 
             return ()
