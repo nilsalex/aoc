@@ -16,6 +16,7 @@ dependencies:
 - base >= 4.7 && < 5
 - ansi-terminal
 - gloss
+- deepseq
 
 library:
   source-dirs: src
