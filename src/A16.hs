@@ -88,19 +88,17 @@ a16_ans1 is = sum $ zipWith (\n x -> x * 10^n) [0..] (reverse first)
 test :: [Int]
 test = fmap (read . pure) "03036732577212944063491565474664"
 
-a16_ans2 :: [Int] -> [Int]
-a16_ans2 is = res -- read $ concat $ fmap show $ take 8 $ res
+a16_ans2 :: [Int] -> Int
+a16_ans2 is = read $ concat $ fmap show $ take 8 $ res
   where
     skip = read $ concat $ fmap show $ take 7 is
     xs = concat $ take 10000 $ repeat is
-    xs' = drop skip xs
+    xs' = reverse $ drop skip xs
 
-    myStep [] = []
-    myStep (y:ys) = let s = (`rem` 10) $ foldl' (+) 0 (y:ys)
-                    in  s : myStep ys
+    myStep (y:ys) = foldl' (\(a:as) y' -> ((a+y') `rem` 10):a:as) [y] ys
 
     go 0 ys = ys
-    go n ys = let ys' = myStep ys
+    go n ys = let ys' = reverse $ myStep ys
               in ys' `deepseq` go (n-1) ys'
 
-    res = myStep xs' -- xs' `deepseq` go 1 xs'
+    res = reverse $ go 100 xs'
