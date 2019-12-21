@@ -2,7 +2,7 @@ module Lib
     ( someFunc
     ) where
 
-import System.IO (hFlush, stdout)
+import System.IO
 
 import A01
 import A02
@@ -125,6 +125,7 @@ someFunc = do
             putStrLn ""
             putStrLn "Day 16:"
             putStrLn $ "Answer 1 : " ++ (show $ a16_ans1 a16_i)
+            hSetBuffering stdout NoBuffering
             putStrLn $ "Answer 2 : " ++ (show $ a16_ans2 a16_i)
 
             return ()
