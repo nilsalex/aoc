@@ -3,6 +3,7 @@ module Lib
     ) where
 
 import System.IO
+import Control.Monad (foldM_)
 
 import A01
 import A02
@@ -21,6 +22,7 @@ import A14
 import A15
 import A16
 import A17
+import A18
 
 someFunc :: IO ()
 someFunc = do
@@ -126,12 +128,19 @@ someFunc = do
             putStrLn "Day 16:"
             putStrLn $ "Answer 1 : " ++ (show $ a16_ans1 a16_i)
             putStrLn $ "Answer 2 : " ++ (show $ a16_ans2 a16_i)
--}
 
             a17_i <- a17_input
             putStrLn ""
             putStrLn "Day 17:"
             putStrLn $ "Answer 1 : " ++ (show $ a17_ans1 a17_i)
             putStrLn $ "Answer 2 : " ++ (show $ a17_ans2 a17_i)
+-}
+
+            a18_i <- a18_input
+            putStrLn ""
+            putStrLn "Day 18:"
+            mapM_ putStrLn $ a18_ans1 a18_i
+            --putStrLn $ "Answer 1 : " ++ (show $ a18_ans1 a18_i)
+            --putStrLn $ "Answer 2 : " ++ (show $ a18_ans2 a18_i)
 
             return ()
