@@ -16,26 +16,26 @@ type Explored = [Pos]
 
 data Tree a b = Node a [Tree a b] | Leaf b deriving Show
 
-showAvail :: ((Char,Char), (Int, [Char])) -> String
-showAvail ((k1,k2),_) = [k1] ++ " <---> " ++ [k2]
+showAvail :: (Int, (Char,Char), [Char]) -> String
+showAvail (d, (k1,k2),_) = [k1] ++ " <---> " ++ [k2] ++ " " ++ show d
 
-showBlock :: ((Char,Char), (Int, [Char])) -> String
-showBlock ((k1,k2),(_,bs)) = [k1] ++ " <-" ++ bs ++ "-> " ++ [k2]
+showBlock :: (Int, (Char,Char), [Char]) -> String
+showBlock (d,(k1,k2),bs) = [k1] ++ " <-" ++ bs ++ "-> " ++ [k2] ++ " " ++ show d
 
-solve :: [[((Char, Char), (Int, [Char]))]] -> Tree Char Int
+solve :: [[(Int, (Char, Char), [Char])]] -> Tree Char Int
 solve [fsts, avails, blockeds] =
-    Node '@' $ fmap (\((_,k0),(d0,_)) -> let (as',bs') = removeDoor k0 avails blockeds
-                                         in go k0 as' bs' d0) fsts
+    Node '@' $ fmap (\(d0,(_,k0),_) -> let (as',bs') = removeDoor k0 avails blockeds
+                                       in go k0 as' bs' d0) fsts
   where
-    next k as = filter (\((k1,k2),_) -> k `elem` [k1,k2]) as
+    next k as = filter (\(_,(k1,k2),_) -> k `elem` [k1,k2]) as
 
-    isEdge k ((k1,k2),_) = k `elem` [k1,k2]
+    isEdge k (_,(k1,k2),_) = k `elem` [k1,k2]
 
     go k as bs d
       | null as = Node k [Leaf d]
-      | otherwise = -- trace (show k ++ "\n" ++ unlines (fmap showAvail as) ++ unlines (fmap showBlock bs)) $
+      | otherwise = trace (show k ++ "\n" ++ unlines (fmap showAvail as) ++ unlines (fmap showBlock bs)) $
                     Node k $
-                    fmap (\x@((k1,k2),(d',_)) ->
+                    fmap (\x@(d',(k1,k2),_) ->
                               let k' = dest k (k1,k2)
                                   (as',bs') = removeDoor k' as bs
                                   as'' = removeIf (k `isEdge`) as'
@@ -54,13 +54,13 @@ removeUnOrd y (x:xs)
   | x == y = xs
   | otherwise = x : removeUnOrd y xs
 
-removeDoor :: Char -> [((Char,Char), (Int,[Char]))] -> [((Char,Char), (Int,[Char]))] -> ([((Char,Char), (Int,[Char]))], [((Char,Char), (Int,[Char]))])
-removeDoor k as bs = foldr (\b@((k1,k2), (d,ds)) (asAcc, bsAcc) ->
+removeDoor :: Char -> [(Int,(Char,Char),[Char])] -> [(Int,(Char,Char),[Char])] -> ([(Int,(Char,Char),[Char])], [(Int,(Char,Char),[Char])])
+removeDoor k as bs = foldr (\b@(d,(k1,k2),ds) (asAcc, bsAcc) ->
                                case removeUnOrd k ds of
-                                 [] -> (insert ((k1,k2), (d,[])) asAcc,
+                                 [] -> (insert (d,(k1,k2),[]) asAcc,
                                         bsAcc)
                                  ds' -> (asAcc,
-                                         insert ((k1,k2), (d,ds')) $
+                                         insert (d,(k1,k2),ds') $
                                          remove b $ bsAcc))
                            (as,[]) bs
 
@@ -76,18 +76,21 @@ sortPair (x,y)
   | x == y = (x,y)
   | x > y = (y,x)
 
-paths :: Pos -> Bounds -> Walls -> Keys -> Doors -> [[((Char, Char), (Int, [Char]))]]
+paths :: Pos -> Bounds -> Walls -> Keys -> Doors -> [[(Int,(Char, Char), [Char])]]
 paths pos bounds walls keys doors =
     [sort firsts,
-     sort $ filter (null . snd . snd) ps,
-     sort $ filter (not . null . snd . snd) ps]
+     sort $ filter (null . thrd) ps,
+     sort $ filter (not . null . thrd) ps]
   where
+    thrd (_,_,x) = x
     numkeys = length keys
     pairs = [ (k1,k2) |
                 x <- [0..numkeys-1], y <- [x+1..numkeys-1],
                 let k1 = keys !! x, let k2 = keys !! y]
-    firsts = filter (null . snd . snd) $ fmap (\(_,kv) -> (('@', kv), find pos bounds walls keys doors kv)) keys
-    ps = fmap (\((kp1,kv1), (_,kv2)) -> (sortPair (kv1, kv2), find kp1 bounds walls keys doors kv2)) pairs
+    firsts = filter (null . thrd) $ fmap (\(_,kv) -> let (d,ds) = find pos bounds walls keys doors kv
+                                                     in (d,('@', kv),ds)) keys
+    ps = fmap (\((kp1,kv1), (_,kv2)) -> let (d,ds) = find kp1 bounds walls keys doors kv2
+                                        in (d,sortPair (kv1, kv2),ds)) pairs
 
 find :: Pos -> Bounds -> Walls -> Keys -> Doors -> Char -> (Int, [Char])
 find pos bounds walls keys doors key
@@ -230,8 +233,10 @@ getMaps input = (pos, bounds, walls, keys, doors)
 a18_input :: IO Map
 a18_input = readFile fileName
 
-a18_ans1 :: Map -> [String]
-a18_ans1 i = fmap show $ branches sol
+a18_ans1 :: Map -> [Int]
+a18_ans1 i = fmap (\b -> case last b of
+                           Right d -> d
+                           _       -> undefined) (branches sol)
   where
     (p,bs,ws,ks,ds) = getMaps i
     ps = paths p bs ws ks ds

@@ -139,7 +139,9 @@ someFunc = do
             a18_i <- a18_input
             putStrLn ""
             putStrLn "Day 18:"
-            mapM_ putStrLn $ a18_ans1 a18_i
+            foldM_ (\acc x -> if x < acc
+                              then print x >> return x
+                              else return acc) 10000 $ a18_ans1 a18_i
             --putStrLn $ "Answer 1 : " ++ (show $ a18_ans1 a18_i)
             --putStrLn $ "Answer 2 : " ++ (show $ a18_ans2 a18_i)
 
