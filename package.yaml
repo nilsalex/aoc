@@ -17,15 +17,20 @@ dependencies:
 - ansi-terminal
 - gloss
 - deepseq
+- containers
+- PSQueue
 
 library:
   source-dirs: src
+  ghc-options:
+    - -O2
 
 executables:
   aoc-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
+    - -O2
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
