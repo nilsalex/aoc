@@ -2,7 +2,7 @@ module A20 (a20_input,a20_ans1,a20_ans2) where
 
 import qualified Data.Set as S
 import qualified Data.Map.Strict as M
-import Data.List (foldl',sort)
+import Data.List (foldl',sort,groupBy,sortBy)
 import Debug.Trace (trace)
 import Data.Char (isAsciiUpper)
 import Control.Monad (guard)
@@ -38,6 +38,9 @@ instance Num InfInt where
 type Maze = (S.Set Pos, Pos, Pos, M.Map Pos Pos)
 type Grid = (M.Map Pos Char, Int, Int)
 
+data Dir = In | Out deriving Show
+type RecMaze = (S.Set Pos, Pos, Pos, M.Map Pos (Pos,Dir))
+
 parseMaze :: String -> Maze
 parseMaze i = (paths, entry, exit, portalMap)
   where
@@ -71,6 +74,47 @@ parseMaze i = (paths, entry, exit, portalMap)
     portalMap = foldl' (\acc [(n1,p1),(n2,p2)] -> if n1 /= n2
                                                   then error ""
                                                   else M.insert p1 p2 $ M.insert p2 p1 acc) M.empty swapped
+
+parseRecMaze :: String -> RecMaze
+parseRecMaze i = (paths, entry, exit, portalMap)
+  where
+    ls = lines i
+    rows = length ls
+    cols = maximum $ fmap length ls
+
+    grid = foldl' (\ws (x,y) -> case (ls !! y) !! x of
+                                  ' ' -> ws
+                                  c   -> M.insert (x,y) c ws)
+           M.empty $ (,) <$> [0..cols-1] <*> [0..rows-1]
+    gridX = maximum $ fmap fst $ M.keys grid
+    gridY = maximum $ fmap snd $ M.keys grid
+
+    paths = foldl' (\ws (x,y) -> case (ls !! y) !! x of
+                                   '.' -> S.insert (x,y) ws
+                                   _   -> ws)
+            S.empty $ (,) <$> [0..cols-1] <*> [0..rows-1]
+
+    [hlOut,hlIn] = sortBy (\(((x,_),_):_) (((x',_),_):_) -> x `compare` x') $ groupBy (\((x,_),_) ((x',_),_) -> x == x') $ M.assocs $ findHorLeft (grid, gridX, gridY)
+    [hrOut,hrIn] = sortBy (\(((x,_),_):_) (((x',_),_):_) -> x' `compare` x) $ groupBy (\((x,_),_) ((x',_),_) -> x == x') $ M.assocs $ findHorRight (grid, gridX, gridY)
+    [vuOut,vuIn] = groupBy (\((_,y),_) ((_,y'),_) -> y == y') $ sortBy (\((_,y),_) ((_,y'),_) -> y `compare` y') $ M.assocs $ findVerUp (grid, gridX, gridY)
+    [vdOut,vdIn] = groupBy (\((_,y),_) ((_,y'),_) -> y == y') $ sortBy (\((_,y),_) ((_,y'),_) -> y' `compare` y) $ M.assocs $ findVerDown (grid, gridX, gridY)
+
+    portalsOut' = M.assocs $ foldl' (\acc l -> M.fromList l `M.union` acc) M.empty [hlOut,hrOut,vuOut,vdOut]
+    portalsIn = M.assocs $ foldl' (\acc l -> M.fromList l `M.union` acc) M.empty [hlIn,hrIn,vuIn,vdIn]
+
+    entry = fst $ head $ filter ((== ('A','A')) . snd) portalsOut'
+    exit  = fst $ head $ filter ((== ('Z','Z')) . snd) portalsOut'
+
+    portalsOut = filter (\(_,name) -> name /= ('A','A') && name /= ('Z','Z')) portalsOut'
+
+    outSwapped = sort $ fmap (\(x,y) -> (y,x)) portalsOut
+    inSwapped = sort $ fmap (\(x,y) -> (y,x)) portalsIn
+
+    portalMap = M.fromList $
+                concat $
+                zipWith (\(nO,pO) (nI,pI) -> if nO /= nI
+                                             then error ""
+                                             else [(pO, (pI,Out)), (pI, (pO,In))]) outSwapped inSwapped
 
 chunksOf :: Int -> [a] -> [[a]]
 chunksOf _ [] = []
@@ -179,6 +223,54 @@ solve (paths, entry, exit, portal) = go queue dists exps prevs
                                   Nothing -> [v]
                                   Just v' -> v : unfoldPrevs v' _prevs
 
+solveRec :: RecMaze -> ([(Pos,Int)],InfInt)
+solveRec (paths, entry', exit', portal) = go queue dists exps prevs
+  where
+    entry = (entry',0)
+    exit = (exit',0)
+
+    source = entry
+    dists  = M.singleton source 0
+    queue  = PSQ.singleton source 0
+    exps   = S.singleton source
+    prevs  = M.empty
+
+    go _queue _dists _exps _prevs =
+      case PSQ.minView _queue of
+        Nothing -> error ""
+        Just (_vertex@(_v,_depth) PSQ.:-> _d0, _queue') ->
+          if _vertex == exit
+          then (unfoldPrevs _vertex _prevs,_d0)
+          else let neighbours = filter (\v -> v `S.notMember` _exps) $ fmap (\v -> (v,_depth)) $ filter (\v -> v `S.member` paths) $ neighs _v
+                   tele = M.lookup _v portal
+                   neighbours' = case tele of
+                                   Nothing -> neighbours
+                                   Just (_v',In) -> if (_v',_depth+1) `S.member` _exps
+                                                    then neighbours
+                                                    else (_v',_depth+1) : neighbours
+                                   Just (_v',Out) -> if _depth == 0
+                                                     then neighbours
+                                                     else if (_v',_depth-1) `S.member` _exps
+                                                          then neighbours
+                                                          else (_v',_depth-1) : neighbours
+                   (_queue'',_dists',_prevs') = foldl' (\(_qAcc,_dAcc,_pAcc) _v' ->
+                                                           let alt = _d0 + F 1
+                                                               _d1 = M.lookup _v' _dists
+                                                               d1  = case _d1 of
+                                                                       Nothing -> Inf
+                                                                       Just i  -> i
+                                                           in if alt < d1
+                                                              then (PSQ.alter (const $ Just alt) _v' _qAcc,
+                                                                    M.insert _v' alt _dAcc,
+                                                                    M.insert _v' _vertex _pAcc)
+                                                              else (PSQ.alter (const $ Just d1) _v' _qAcc,_dAcc,_pAcc)) (_queue',_dists,_prevs) neighbours'
+                   _exps' = S.insert _vertex _exps
+               in  go _queue'' _dists' _exps' _prevs'
+
+    unfoldPrevs v _prevs = case M.lookup v _prevs of
+                                  Nothing -> [v]
+                                  Just v' -> v : unfoldPrevs v' _prevs
+
 fileName :: String
 fileName = "data/a20/input.txt"
 
@@ -194,4 +286,9 @@ a20_ans1 i = (\x -> case x of
     (path,l) = solve maze
 
 a20_ans2 :: String -> Int
-a20_ans2 i = (-1)
+a20_ans2 i = (\x -> case x of
+                      Inf -> -1
+                      F y -> y) l
+  where
+    maze@(_,_,_,ps) = parseRecMaze i
+    (path,l) = solveRec maze
