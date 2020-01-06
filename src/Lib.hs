@@ -24,6 +24,7 @@ import A16
 import A17
 import A18
 import A19
+import A20
 
 someFunc :: IO ()
 someFunc = do
@@ -141,11 +142,18 @@ someFunc = do
             putStrLn "Day 18:"
             putStrLn $ "Answer 1 : " ++ (show $ a18_ans1 a18_i)
             putStrLn $ "Answer 2 : " ++ (show $ a18_ans2 a18_i)
--}
+
             a19_i <- a19_input
             putStrLn ""
             putStrLn "Day 19:"
             putStrLn $ "Answer 1 : " ++ (show $ a19_ans1 a19_i)
             putStrLn $ "Answer 2 : " ++ (show $ a19_ans2 a19_i)
+-}
+
+            a20_i <- a20_input
+            putStrLn ""
+            putStrLn "Day 20:"
+            putStrLn $ "Answer 1 : " ++ (show $ a20_ans1 a20_i)
+            putStrLn $ "Answer 2 : " ++ (show $ a20_ans2 a20_i)
 
             return ()
