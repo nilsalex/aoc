@@ -19,6 +19,7 @@ dependencies:
 - deepseq
 - containers
 - PSQueue
+- parallel
 
 library:
   source-dirs: src
