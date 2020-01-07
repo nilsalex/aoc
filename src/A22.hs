@@ -2,51 +2,37 @@
 
 module A22 (a22_input,a22_ans1,a22_ans2) where
 
-import qualified Data.Sequence as S
-import Data.List (sort,foldl')
+data Act = DealNew | Cut Int | DealIncr Int deriving Show
 
-import Debug.Trace (trace)
-
-cut :: Int -> S.Seq a -> S.Seq a
-cut n xs = case n `compare` 0 of
-             LT -> S.drop (n+l) xs S.>< S.take (n+l) xs
-             EQ -> xs
-             GT -> S.drop n xs S.>< S.take n xs
-  where
-    l = S.length xs
-
-dealWithIncrement :: Int -> S.Seq a -> S.Seq a
-dealWithIncrement i xs = S.fromList $ foldr (\i acc -> S.index xs i : acc) [] perm
-  where
-    n = S.length xs
-    perm = fmap snd $ sort $ zip (take n $ go 0) [0..]
-    go x = let x' = (x + i) `mod` n
-           in x : go x'
-
-parseAct :: String -> (S.Seq a -> S.Seq a)
+parseAct :: String -> Act
 parseAct s
-  | s == "deal into new stack" = S.reverse
+  | s == "deal into new stack" = DealNew
   | take 4 s == "cut " = let i = read (drop 4 s) :: Int
-                         in cut i
+                         in Cut i
   | take 20 s == "deal with increment " = let i = read (drop 20 s) :: Int
-                                         in dealWithIncrement i
+                                         in DealIncr i
   | otherwise = error s
+
+mAct :: Int -> Act -> (Int -> Int)
+mAct m DealNew      = \i -> (-(i+1)) `mod` m
+mAct m (Cut k)      = \i -> (i-k) `mod` m
+mAct m (DealIncr k) = \i -> (i*k) `mod` m
 
 filename :: String
 filename = "data/a22/input.txt"
 
-a22_input :: IO [S.Seq a -> S.Seq a]
+a22_input :: IO [Act]
 a22_input = fmap (fmap parseAct . lines) $ readFile filename
 
-a22_ans1 :: [S.Seq Int -> S.Seq Int] -> Int
-a22_ans1 acts = (\(Just x) -> x) $ S.elemIndexL 2019 deck'
+a22_ans1 :: [Act] -> Int
+a22_ans1 acts = go funs card
   where
-    deck = S.fromList [0..10006]
+    prime = 10007
+    funs = fmap (mAct prime) acts
+    card = 2019
 
-    deck' = go acts deck
+    go [] c = c
+    go (a:as) c = let !c' = a c in go as c'
 
-    go [] d = d
-    go (a:as) d = let !a' = a d in go as a'
-
-a22_ans2 :: [S.Seq Int -> S.Seq Int] -> Int
+a22_ans2 :: [Act] -> Int
 a22_ans2 acts = (-1)
