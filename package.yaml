@@ -20,6 +20,8 @@ dependencies:
 - containers
 - PSQueue
 - parallel
+- transformers
+- mtl
 
 library:
   source-dirs: src
