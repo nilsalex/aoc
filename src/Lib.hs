@@ -168,6 +168,6 @@ someFunc = do
             putStrLn ""
             putStrLn "Day 22:"
             putStrLn $ "Answer 1 : " ++ (show $ a22_ans1 a22_i)
-            --putStrLn $ "Answer 2 : " ++ (show $ a22_ans2 a22_i)
+            putStrLn $ "Answer 2 : " ++ (show $ a22_ans2 a22_i)
 
             return ()
