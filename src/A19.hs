@@ -2,6 +2,11 @@
 
 module A19 (a19_input,a19_ans1,a19_ans2) where
 
+import Control.DeepSeq (deepseq)
+import GHC.Conc (getNumCapabilities)
+
+import Control.Parallel.Strategies
+
 import Data.List (foldl',sort)
 import qualified Data.Sequence as SQ
 
@@ -179,31 +184,36 @@ convProgramme = Programme . SQ.fromList . fmap read . splitAt' ','
 loadProgramme :: String -> IO Programme
 loadProgramme = fmap convProgramme . readFile
 
-a19_input :: IO Programme
-a19_input = loadProgramme fileName
+a19_input :: IO (Programme, Int)
+a19_input = do
+             Programme prog' <- loadProgramme fileName
+             let prog = Programme $ prog' SQ.>< SQ.replicate 100 0
+             nThreads <- getNumCapabilities
+             return (prog, nThreads)
 
-a19_ans1 :: Programme -> Int
-a19_ans1 (Programme prog) = length $ filter (==1) $ (\x y -> res (s0 x y)) <$> [0..49] <*> [0..49]
+a19_ans1 :: (Programme, Int) -> Int
+a19_ans1 (prog, _) = length $ filter (==1) $ (\x y -> res (s0 x y)) <$> [0..49] <*> [0..49]
   where
-    prog' = Programme $ prog SQ.>< SQ.replicate 100 0
-    s0 x y = (RUN,0,0,prog',Buffer [x,y],Buffer [])
+    s0 x y = (RUN,0,0,prog,Buffer [x,y],Buffer [])
     res s = let (HALT,_,_,_,_,Buffer ob) = snd $ runState eval $ s
             in head ob
 
-a19_ans2 :: Programme -> Int
-a19_ans2 (Programme prog) = trace (show $ fit 1 1 0 0) $
-                            (\(x,y) -> 10000*x + y) $ case ress of
+a19_ans2 :: (Programme, Int) -> Int
+a19_ans2 (prog, nThreads) = (\(x,y) -> 10000*x + y) $ case ress of
                                                         [] -> error ""
                                                         r:_ -> r
   where
-    prog' = Programme $ prog SQ.>< SQ.replicate 100 0
-    s0 x y = (RUN,0,0,prog',Buffer [x,y],Buffer [])
+    s0 x y = (RUN,0,0,prog,Buffer [x,y],Buffer [])
     res s = let (HALT,_,_,_,_,Buffer ob) = snd $ runState eval $ s
             in head ob
 
-    tracts = S.fromList $ catMaybes $ (\x y -> case res (s0 x y) of
-                                                 0 -> Nothing
-                                                 _ -> Just (x,y)) <$> [0..1999] <*> [0..1999]
+    chunk = (2000 * 2000) `div` nThreads
+
+    tracts = S.fromList $ catMaybes $
+             withStrategy (parListChunk chunk rdeepseq) $
+             (\x y -> case res (s0 x y) of
+                         0 -> Nothing
+                         _ -> Just (x,y)) <$> [0..1999] <*> [0..1999]
 
     cands = fmap snd $ sort $ (\x y -> (x*x + y*y, (x,y))) <$> [0..1899] <*> [0..1899]
 

@@ -1,5 +1,7 @@
 module A05 (a05_run,a05_input) where
 
+import qualified Data.Sequence as S
+
 data Op = Add Int Int Int Bool Bool Bool |
           Mult Int Int Int Bool Bool Bool |
           Get Int Bool |
@@ -37,8 +39,8 @@ equals = 8
 stop :: Int
 stop = 99
 
-op :: Int -> [Int] -> Op
-op pos xs'
+op :: Int -> S.Seq Int -> Op
+op pos xs
     | o == add = Add p1 p2 p3 b1 b2 b3
     | o == mult = Mult p1 p2 p3 b1 b2 b3
     | o == get = Get p1 b1
@@ -49,18 +51,20 @@ op pos xs'
     | o == equals = Equals p1 p2 p3 b1 b2 b3
     | o == stop = Stop
   where
-    (x:xs) = drop pos xs'
+    x = S.index xs pos
     m1 = x `div` 10000
     m2 = (x `mod` 10000) `div` 1000
     m3 = ((x `mod` 10000) `mod` 1000) `div` 100
     o  = (((x `mod` 10000) `mod` 1000) `mod` 100)
 
     [b3, b2, b1] = fmap b [m1, m2, m3]
-    [p1, p2, p3] = take 3 xs
+    p1 = S.index xs (pos+1)
+    p2 = S.index xs (pos+2)
+    p3 = S.index xs (pos+3)
 
     b i = i /= 0
 
-runOp :: Op -> Int -> [Int] -> IO (Either [Int] (Int, [Int]))
+runOp :: Op -> Int -> S.Seq Int -> IO (Either (S.Seq Int) (Int, S.Seq Int))
 runOp op pos xs =
     case op of
       Add a b c ma mb mc  -> pure $ Right $ (pos + 4, write c mc $ look a ma + look b mb)
@@ -87,15 +91,15 @@ runOp op pos xs =
   where
     look i mi = case mi of
                   True -> i
-                  False -> xs !! i
+                  False -> S.index xs i
     write i mi v = case mi of
                      True -> error ""
-                     False -> modify i (const v) xs
+                     False -> S.update i v xs
 
-run :: [Int] -> IO (Int, [Int])
+run :: S.Seq Int -> IO (Int, S.Seq Int)
 run = run' 0
 
-run' :: Int -> [Int] -> IO (Int, [Int])
+run' :: Int -> S.Seq Int -> IO (Int, S.Seq Int)
 run' pos xs = do
                r <- runOp o pos xs
                case r of
@@ -120,17 +124,17 @@ splitAt' d xs = case word of
 fileName :: String
 fileName = "data/a05/input.txt"
 
-convProgramme :: String -> [Int]
-convProgramme = fmap read . splitAt' ','
+convProgramme :: String -> S.Seq Int
+convProgramme = S.fromList . fmap read . splitAt' ','
 
-loadProgramme :: String -> IO [Int]
+loadProgramme :: String -> IO (S.Seq Int)
 loadProgramme = fmap convProgramme . readFile
 
-a05_input :: IO [Int]
+a05_input :: IO (S.Seq Int)
 a05_input = loadProgramme fileName
 
 prepare :: Int -> Int -> [Int] -> [Int]
 prepare n v (x:_:_:xs) = x:n:v:xs
 
-a05_run :: [Int] -> IO Int
-a05_run = fmap (head . snd) . run
+a05_run :: (S.Seq Int) -> IO Int
+a05_run = fmap ((\xs -> S.index xs 0) . snd) . run

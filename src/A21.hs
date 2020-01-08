@@ -3,7 +3,6 @@ module A21 (a21_input,a21_ans1,a21_ans2) where
 import Data.Char (chr,ord)
 import Debug.Trace (trace)
 import Data.List (sort)
-import Control.Parallel.Strategies
 import qualified Data.Sequence as S
 
 newtype State s a = State { runState :: s -> (a, s) }
@@ -191,19 +190,6 @@ a21_ans1 (Programme prog') = head myResult
        "WALK"]
 
     myResult = res (s0 myScript)
-
-    instructions = (\i x y -> i ++ x ++ y) <$> ["AND ","OR ","NOT "] <*> ["A ","B ","C ","D ","T ","J "] <*> ["T\n","J\n"]
-    walk = "WALK\n"
-
-    scripts1 = fmap (fmap ord . (++walk)) instructions
-    scripts2 = fmap (fmap ord . (++walk)) $ (++) <$> instructions <*> instructions
-    scripts3 = fmap (fmap ord . (++walk)) $ (\a b c -> a ++ b ++ c) <$> instructions <*> instructions <*> instructions
-    scripts4 = fmap (fmap ord . (++walk)) $ (\a b c d -> a ++ b ++ c ++ d) <$> instructions <*> instructions <*> instructions <*> instructions
-    scripts5 = fmap (fmap ord . (++walk)) $ (\a b c d e -> a ++ b ++ c ++ d ++ e) <$> instructions <*> instructions <*> instructions <*> instructions <*> instructions
-
-    chunkSize n = (36^n) `div` 12
-
-    results = withStrategy (parListChunk (chunkSize 4) rdeepseq) $ fmap (\script -> head $ res (s0 script)) scripts4
 
 a21_ans2 :: Programme -> Int
 a21_ans2 (Programme prog') = head myResult
