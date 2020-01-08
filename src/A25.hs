@@ -4,6 +4,8 @@ module A25 (a25) where
 
 import Debug.Trace (trace)
 
+import System.Console.ANSI
+
 import System.IO
 import Network.Socket
 import Network.Socket.ByteString (recv, sendAll)
@@ -11,10 +13,14 @@ import Network.Socket.ByteString (recv, sendAll)
 import qualified Data.ByteString as BS
 import Data.ByteString.Char8 (pack,unpack)
 
+import Data.Maybe (catMaybes)
+
+import qualified Data.Set as SET
+
 import Control.Concurrent (forkFinally)
 import qualified Control.Exception as E
 
-import Control.Monad (unless, forever, void)
+import Control.Monad (unless, forever, void, guard, when)
 import Control.Monad.Trans
 import Control.Monad.Trans.State.Lazy
 import Data.Char (ord,chr)
@@ -161,14 +167,50 @@ chunksOf :: Int -> [a] -> [[a]]
 chunksOf _ [] = []
 chunksOf n xs = take n xs : chunksOf n (drop n xs)
 
-play :: Socket -> StateT ProgState IO ()
-play s = do
+type Pos = (Int,Int)
+type Visited = SET.Set (Int,Int)
+type Dir = (Int,Int)
+
+parseDir :: String -> Maybe Dir
+parseDir xs
+  | take 5 xs == "north" = Just (0,-1)
+  | take 5 xs == "south" = Just (0,1)
+  | take 4 xs == "west" = Just (-1,0)
+  | take 4 xs == "east" = Just (1,0)
+  | otherwise = Nothing
+
+walk :: Dir -> Pos -> Pos
+walk (xd,yd) (x,y) = (xd+x,yd+y)
+
+updateGui :: Pos -> Visited -> String -> String -> IO (Pos,Visited)
+updateGui p vs output input =
+    case dir of
+      Nothing -> return (p,vs)
+      Just d  -> if d `elem` avails
+                 then let p'@(x,y) = walk d p
+                          vs' = SET.insert p' vs
+                      in
+                         do
+                          setCursorPosition (y+15) (x+15)
+                          putChar '.'
+                          setCursorPosition (y+15) (x+15)
+                          return (p',vs')
+                 else return (p,vs)
+  where
+    dir = parseDir input
+    avails = catMaybes $ fmap (parseDir . drop 2) $ filter ((== "- ") . take 2) $ lines output
+
+play :: Socket -> Pos -> Visited -> StateT ProgState IO ()
+play s p vs =
+    do
         Buffer ob <- eval
-        lift $ sendAll s $ pack $ fmap chr $ reverse ob
+        let ob' = fmap chr $ reverse ob
+        lift $ sendAll s $ pack $ ob'
         msg <- lift $ fmap unpack $ recv s 1024
         let ib = filter (/= 13) $ fmap ord msg
-        trace (show ib) $ modify (\(x1,x2,x3,x4,Buffer ib',x5) -> (x1,x2,x3,x4,Buffer $ ib' ++ ib,x5))
-        play s
+        modify (\(x1,x2,x3,x4,Buffer ib',_) -> (x1,x2,x3,x4,Buffer $ ib' ++ ib,Buffer []))
+        (p',vs') <- lift $ updateGui p vs ob' msg
+        play s p' vs'
 
 a25 :: IO ()
 a25 = do
@@ -176,8 +218,14 @@ a25 = do
        let prog = Programme $ prog' S.>< S.replicate 10000 0
        let s0 = (RUN,0,0,prog,Buffer [],Buffer [])
        hSetBuffering stdout NoBuffering
+       clearScreen
+       setCursorPosition 0 0
+       mapM_ putStrLn $ take 31 $ repeat (take 31 $ repeat '#')
+       setCursorPosition 15 15
+       putChar '.'
+       setCursorPosition 15 15
 
-       runTCPServer Nothing "3000" (\s -> evalStateT (play s) $ s0)
+       runTCPServer Nothing "3000" (\s -> evalStateT (play s (0,0) SET.empty) $ s0)
 
 runTCPServer :: Maybe HostName -> ServiceName -> (Socket -> IO a) -> IO a
 runTCPServer mhost port server = withSocketsDo $ do
@@ -187,6 +235,7 @@ runTCPServer mhost port server = withSocketsDo $ do
     resolve = do
         let hints = defaultHints {
                 addrFlags = [AI_PASSIVE]
+              , addrFamily = AF_INET6
               , addrSocketType = Stream
               }
         head <$> getAddrInfo (Just hints) mhost (Just port)
