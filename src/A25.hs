@@ -15,8 +15,6 @@ import Data.ByteString.Char8 (pack,unpack)
 
 import Data.Maybe (catMaybes)
 
-import qualified Data.Set as SET
-
 import Control.Concurrent (forkFinally)
 import qualified Control.Exception as E
 
@@ -168,8 +166,8 @@ chunksOf _ [] = []
 chunksOf n xs = take n xs : chunksOf n (drop n xs)
 
 type Pos = (Int,Int)
-type Visited = SET.Set (Int,Int)
 type Dir = (Int,Int)
+type Visited = M.Map String Pos
 
 parseDir :: String -> Maybe Dir
 parseDir xs
@@ -184,33 +182,42 @@ walk (xd,yd) (x,y) = (xd+x,yd+y)
 
 updateGui :: Pos -> Visited -> String -> String -> IO (Pos,Visited)
 updateGui p vs output input =
-    case dir of
-      Nothing -> return (p,vs)
-      Just d  -> if d `elem` avails
-                 then let p'@(x,y) = walk d p
-                          vs' = SET.insert p' vs
-                      in
-                         do
-                          setCursorPosition (y+15) (x+15)
-                          putChar '.'
-                          setCursorPosition (y+15) (x+15)
-                          return (p',vs')
-                 else return (p,vs)
+    case location of
+      []   -> return (p,vs)
+      l:_  -> case M.lookup l vs of
+              Nothing -> case input of
+                           "" -> do
+                                  setCursorPosition 15 15
+                                  putChar '.'
+                                  setCursorPosition 15 15
+                                  return ((0,0), M.insert l (0,0) vs)
+                           _  -> case dir of
+                                  Nothing -> error ""
+                                  Just d  -> do
+                                              let p'@(x,y) = walk d p
+                                              let vs' = M.insert l p' vs
+                                              setCursorPosition (y+15) (x+15)
+                                              putChar '.'
+                                              setCursorPosition (y+15) (x+15)
+                                              return (p',vs')
+              Just p'@(x,y) -> do
+                                setCursorPosition (15+y) (15+x)
+                                return (p',vs)
   where
     dir = parseDir input
-    avails = catMaybes $ fmap (parseDir . drop 2) $ filter ((== "- ") . take 2) $ lines output
+    location = filter ((== "==") . take 2) $ lines output
 
-play :: Socket -> Pos -> Visited -> StateT ProgState IO ()
-play s p vs =
+play :: Socket -> Pos -> Visited -> String -> StateT ProgState IO ()
+play s p vs lastIn =
     do
         Buffer ob <- eval
         let ob' = fmap chr $ reverse ob
+        (p',vs') <- lift $ updateGui p vs ob' lastIn
         lift $ sendAll s $ pack $ ob'
         msg <- lift $ fmap unpack $ recv s 1024
         let ib = filter (/= 13) $ fmap ord msg
         modify (\(x1,x2,x3,x4,Buffer ib',_) -> (x1,x2,x3,x4,Buffer $ ib' ++ ib,Buffer []))
-        (p',vs') <- lift $ updateGui p vs ob' msg
-        play s p' vs'
+        play s p' vs' msg
 
 a25 :: IO ()
 a25 = do
@@ -225,7 +232,7 @@ a25 = do
        putChar '.'
        setCursorPosition 15 15
 
-       runTCPServer Nothing "3000" (\s -> evalStateT (play s (0,0) SET.empty) $ s0)
+       runTCPServer Nothing "3000" (\s -> evalStateT (play s (0,0) M.empty "") $ s0)
 
 runTCPServer :: Maybe HostName -> ServiceName -> (Socket -> IO a) -> IO a
 runTCPServer mhost port server = withSocketsDo $ do
