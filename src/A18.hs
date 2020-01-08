@@ -15,17 +15,30 @@ import Control.Monad (guard)
 
 import Data.Char (toLower,ord)
 
-import Debug.Trace (trace)
-
-type Map = String
-type Bounds = ((Int,Int), (Int,Int))
-type Pos = (Int,Int)
-type Walls = S.Set Pos
-type Keys = M.Map Pos Char
-type Doors = M.Map Pos Char
-type Explored = S.Set Pos
-
 data InfInt = F Int | Inf deriving Eq
+
+type Pos = (Int,Int)
+data Tile = Path | Wall | Key Char | Door Char deriving Show
+data Start = Start
+data Space = Space
+type Maze = M.Map Pos Tile
+
+parseTile :: Char -> Either Tile (Either Start Space)
+parseTile '.' = Right (Right Space)
+parseTile '#' = Left Wall
+parseTile '@' = Right (Left Start)
+parseTile c
+    | c == c'   = Left (Key c)
+    | otherwise = Left (Door c')
+  where
+    c' = toLower c
+
+parseMaze :: String -> ([Pos],Maze)
+parseMaze str =
+  where
+    ls = lines str
+    xDim = maximum $ fmap length ls
+    yDim = length ls
 
 instance Show InfInt where
   show Inf = "Inf"
@@ -47,10 +60,6 @@ instance Num InfInt where
   abs _ = error ""
   signum _ = error ""
   fromInteger i = F $ fromInteger i
-
-type Vertex = (Char,Int)
-
-data Tree a b = Node a [Tree a b] | Leaf b deriving Show
 
 alphabet :: [Char]
 alphabet = "abcdefghijklmnopqrstuvwxyz"
@@ -157,157 +166,17 @@ solve' ks pss = go queue dists exps
                       _exps' = S.insert _vertex _exps
                   in go _queue'' _dists' _exps'
 
-sortPair :: Ord a => (a, a) -> (a, a)
-sortPair (x,y)
-  | x < y = (x,y)
-  | x == y = (x,y)
-  | x > y = (y,x)
-
-paths :: Pos -> Bounds -> Walls -> Keys -> Doors -> M.Map (Char,Char) (Int,Int)
-paths pos bounds walls keys doors = M.fromList (firsts ++ ps)
-  where
-    numkeys = length keys
-    pairs = [ (k1,k2) |
-                x <- [0..numkeys-1], y <- [x+1..numkeys-1],
-                let k1 = M.elemAt x keys, let k2 = M.elemAt y keys]
-    firsts = filter ((== B.zeroBits) . snd . snd) $ fmap (\kv -> let (d,ds) = find pos bounds walls keys doors kv
-                                                                 in (('@', kv),(d,toBits ds))) $ M.elems keys
-    ps = fmap (\((kp1,kv1), (_,kv2)) -> let (d,ds) = find kp1 bounds walls keys doors kv2
-                                        in (sortPair (kv1, kv2),(d,toBits ds))) pairs
-
-paths' :: Pos -> Bounds -> Walls -> Keys -> Doors -> M.Map (Char,Char) (Int,Int)
-paths' pos bounds walls keys doors = M.fromList (firsts ++ ps)
-  where
-    numkeys = length keys
-    pairs = [ (k1,k2) |
-                x <- [0..numkeys-1], y <- [x+1..numkeys-1],
-                let k1 = M.elemAt x keys, let k2 = M.elemAt y keys]
-    firsts = fmap (\kv -> let (d,ds) = find pos bounds walls keys doors kv
-                          in (('@', kv),(d,toBits ds))) $ M.elems keys
-    ps = fmap (\((kp1,kv1), (_,kv2)) -> let (d,ds) = find kp1 bounds walls keys doors kv2
-                                        in (sortPair (kv1, kv2),(d,toBits ds))) pairs
-
-find :: Pos -> Bounds -> Walls -> Keys -> Doors -> Char -> (Int, [Char])
-find pos bounds walls keys doors key
-    | null bs' = error ""
-    | otherwise = case snd (head bs') == snd (last bs') of
-                    False -> error ""
-                    True  -> head bs'
-  where
-    Just t = truncate $ explore pos bounds walls keys doors S.empty key 0
-    bs = branches t
-    bs' = sort $ fmap collapse bs
-
-collapse :: [Either (Maybe a) b] -> (b, [a])
-collapse xs = (l, fmap (\(Just x) -> x) xs'')
-  where
-    (Right l) = last xs
-    xs' = fmap (\(Left x) -> x) $ init xs
-    xs'' = filter (\x -> case x of Nothing -> False; _ -> True) xs'
-
-explore :: Pos -> Bounds -> Walls -> Keys -> Doors -> Explored -> Char -> Int -> Tree (Maybe Char) Int
-explore pos bounds@((x0,x1),(y0,y1)) walls keys doors explored key depth =
-    Node (M.lookup pos doors) $ fmap explore' $ next pos
-  where
-    inBounds (x,y) = x >= x0 && x <= x1 && y >= y0 && y <= y1
-    isWall pos' = pos' `S.member` walls
-    isDoor pos' = case M.lookup pos' doors of
-                    Nothing -> False
-                    _       -> True
-    isExplored pos' = pos' `S.member` explored
-
-    next (x,y) = [(x-1,y), (x+1,y), (x,y-1), (x,y+1)]
-
-    explore' pos' =
-      case M.lookup pos' doors of
-        Just d -> explore pos' bounds walls keys doors (S.insert pos explored) key (depth+1)
-        Nothing -> case M.lookup pos' keys of
-                     Nothing -> case isWall pos' || not (inBounds pos') of
-                                  True -> Node Nothing []
-                                  False -> case isExplored pos' of
-                                             True -> Node Nothing []
-                                             False -> explore pos' bounds walls keys doors (S.insert pos explored) key (depth+1)
-                     Just k -> if k == key
-                               then Leaf (depth+1)
-                               else case isWall pos' || not (inBounds pos') of
-                                      True -> Node Nothing []
-                                      False -> case isExplored pos' of
-                                                 True -> Node Nothing []
-                                                 False -> explore pos' bounds walls keys doors (S.insert pos explored) key (depth+1)
-
-leafs :: Tree a b -> [b]
-leafs (Leaf l) = [l]
-leafs (Node _ f) = concat $ fmap leafs f
-
-branches :: Tree a b -> [[Either a b]]
-branches (Leaf l) = [[Right l]]
-branches (Node n fs) = fmap ((Left n):) $ concat $ fmap branches fs
-
-truncate :: Tree a b -> Maybe (Tree a b)
-truncate (Leaf l) = Just (Leaf l)
-truncate (Node _ []) = Nothing
-truncate (Node n f) = case f' of
-                        [] -> Nothing
-                        f'' -> Just $ Node n f''
-  where
-    f' = fmap (\(Just x) -> x) $
-         filter (\x -> case x of
-                         Nothing -> False
-                         Just _ -> True) $
-         fmap truncate f
-                      
-sort :: Ord a => [a] -> [a]
-sort [] = []
-sort (x:xs) = sort xl ++ [x] ++ sort xr
-  where
-    xl = filter (<=x) xs
-    xr = filter (>x) xs
-
-elem' :: Ord a => a -> [a] -> Bool
-elem' _ [] = False
-elem' y (x:xs)
-  | y < x = False
-  | y == x = True
-  | y > x = y `elem'` xs
-
 fileName :: String
 fileName = "data/a18/input.txt"
 
-getMaps :: String -> (Pos, Bounds, Walls, Keys, Doors)
-getMaps input = (pos, bounds, walls, keys, doors)
-  where
-    ls = lines input
-    rows = length ls
-    cols = length (head ls)
-    grid = (,) <$> [0..cols-1] <*> [0..rows-1]
-    pos = head $ filter (\(x,y) -> (ls !! y) !! x == '@') grid
-    bounds = ((0,cols-1), (0,rows-1))
-    walls = S.fromList $ filter (\(x,y) -> (ls !! y) !! x == '#') grid
-    keys = M.fromList $
-           filter ((`elem'` "abcdefghijklmnopqrstuvwxyz") . snd) $
-           fmap (\(x,y) -> ((x,y), ls !! y !! x)) grid
-    doors = M.fromList $
-            fmap (fmap toLower) $
-            filter ((`elem'` "ABCDEFGHIJKLMNOPQRSTUVWXYZ") . snd) $
-            fmap (\(x,y) -> ((x,y), ls !! y !! x)) grid
-
-a18_input :: IO Map
+a18_input :: IO String
 a18_input = readFile fileName
 
-a18_ans1 :: Map -> Int
-a18_ans1 i = (\x -> case x of
-                      Inf -> -1
-                      F i -> i) $
-             solve (M.elems ks) ps
-  where
-    (p,bs,ws,ks,ds) = getMaps i
-    ps = paths p bs ws ks ds
+a18_ans1 :: String -> Int
+a18_ans1 i = (-1)
 
-a18_ans2 :: Map -> Int
-a18_ans2 i = (\x -> case x of
-                      Inf -> -1
-                      F i -> i) $
-             solve' allKeys [ps1,ps2,ps3,ps4]
+a18_ans2 :: String -> Int
+a18_ans2 i = (-1)
   where
     ls = lines i
     l1:l2:l3:ls' = drop 39 ls
@@ -320,15 +189,3 @@ a18_ans2 i = (\x -> case x of
     i2 = unlines $ take 41 $ fmap (drop 40) i'
     i3 = unlines $ drop 40 $ fmap (take 41) i'
     i4 = unlines $ drop 40 $ fmap (drop 40) i'
-
-    (p1,bs1,ws1,ks1,ds1) = getMaps i1
-    (p2,bs2,ws2,ks2,ds2) = getMaps i2
-    (p3,bs3,ws3,ks3,ds3) = getMaps i3
-    (p4,bs4,ws4,ks4,ds4) = getMaps i4
-
-    ps1 = paths' p1 bs1 ws1 ks1 ds1
-    ps2 = paths' p2 bs2 ws2 ks2 ds2
-    ps3 = paths' p3 bs3 ws3 ks3 ds3
-    ps4 = paths' p4 bs4 ws4 ks4 ds4
-
-    allKeys = S.toList $ S.fromList $ concat $ [M.elems ks1, M.elems ks2, M.elems ks3, M.elems ks4]
