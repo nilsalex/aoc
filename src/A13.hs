@@ -1,5 +1,7 @@
-module A13 (a13_input,game) where
+module A13 () where
+--module A13 (a13_input,game) where
 
+{-
 import System.IO
 import Control.Monad (when)
 import Graphics.Gloss
@@ -316,4 +318,5 @@ a13_ans2 (Programme (x:prog)) = length $ filter ((==2) . snd) screen
     Buffer o = fst $ runState evalRec $ s0
     instructions = chunksOf' 3 $ reverse o
     screen = foldr (\[x,y,c] s -> updateScreen x y c s) [] instructions
+-}
 -}

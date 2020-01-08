@@ -5,15 +5,22 @@
 
 packages:
 - completed:
-    hackage: PSQueue-1.1.0.1@sha256:0eb84220799c95fd7ec05b2f3ba1a673ac24a8200a79be1666233852a8d346c6,1272
+    cabal-file:
+      size: 1272
+      sha256: d3278942bd94de207eb3d2a2f5f4241f8188a2c3cdc939fd7d12b19f43090358
+    name: PSQueue
+    version: 1.1.0.1
+    git: https://github.com/nilsalex/PSQueue.git
     pantry-tree:
-      size: 214
-      sha256: fae71e1b043cedbc4335278cf12496aa13e4ca429ef2875f6216eadaa4816ec8
+      size: 314
+      sha256: 567738f8feffa61067c8c3be8f7f4cf3ec3d8c6342266793aeefa95de0acc107
+    commit: 4dad46b91676ab43c3130850fa9d128959eb884f
   original:
-    hackage: PSQueue-1.1.0.1@sha256:0eb84220799c95fd7ec05b2f3ba1a673ac24a8200a79be1666233852a8d346c6,1272
+    git: https://github.com/nilsalex/PSQueue.git
+    commit: 4dad46b91676ab43c3130850fa9d128959eb884f
 snapshots:
 - completed:
-    size: 523700
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/14/7.yaml
-    sha256: 8e3f3c894be74d71fa4bf085e0a8baae7e4d7622d07ea31a52736b80f8b9bb1a
-  original: lts-14.7
+    size: 444371
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/nightly/2020/1/7.yaml
+    sha256: fd946527b80475ffd4cfd1bc43df0298a2019e4919822cb56bc6376f80985a6d
+  original: nightly-2020-01-07

@@ -1,7 +1,8 @@
-resolver: lts-14.7
+resolver: nightly-2020-01-07
 
 packages:
 - .
 
 extra-deps:
-  - PSQueue-1.1.0.1@sha256:0eb84220799c95fd7ec05b2f3ba1a673ac24a8200a79be1666233852a8d346c6,1272
+  - git: https://github.com/nilsalex/PSQueue.git
+    commit: 4dad46b91676ab43c3130850fa9d128959eb884f

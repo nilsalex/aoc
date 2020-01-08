@@ -15,13 +15,13 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 - ansi-terminal
-- gloss
-- deepseq
 - containers
 - PSQueue
 - parallel
 - transformers
 - mtl
+- network
+- bytestring
 
 library:
   source-dirs: src

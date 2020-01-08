@@ -11,7 +11,6 @@ import qualified Data.Bits as B
 import qualified Data.Set as S
 import qualified Data.Map.Strict as M
 
-import Control.DeepSeq (deepseq,NFData(..))
 import Control.Monad (guard)
 
 import Data.Char (toLower,ord)
@@ -31,10 +30,6 @@ data InfInt = F Int | Inf deriving Eq
 instance Show InfInt where
   show Inf = "Inf"
   show (F i) = show i
-
-instance NFData InfInt where
-  rnf Inf = ()
-  rnf (F i) = rnf i
 
 instance Ord InfInt where
   F i `compare` F j = i `compare` j

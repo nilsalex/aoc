@@ -3,7 +3,6 @@
 module A16 (a16_input,a16_ans1,a16_ans2,test) where
 
 import Data.List (foldl')
-import Control.DeepSeq (deepseq)
 
 fileName :: String
 fileName = "data/a16/input.txt"
@@ -57,15 +56,15 @@ step' len p is = go 0
 
 steps :: Int -> [Int] -> [Int]
 steps 0 xs = xs
-steps n xs = {- xs' `deepseq` -} steps (n-1) xs'
+steps n xs = steps (n-1) xs'
   where
     xs' = step xs
 
 stepsIO :: Int -> [Int] -> IO [Int]
 stepsIO 0 xs = return xs
-stepsIO n xs = {- xs' `deepseq` -} (do
-                               print n
-                               stepsIO (n-1) xs')
+stepsIO n xs = do
+                print n
+                stepsIO (n-1) xs'
   where
     xs' = step xs
 
@@ -99,6 +98,6 @@ a16_ans2 is = read $ concat $ fmap show $ take 8 $ res
 
     go 0 ys = ys
     go n ys = let ys' = reverse $ myStep ys
-              in ys' `deepseq` go (n-1) ys'
+              in ys' `seq` go (n-1) ys'
 
     res = reverse $ go 100 xs'
