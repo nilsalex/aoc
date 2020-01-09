@@ -13,6 +13,6 @@ Building via stack is recommended, since the library depends on a fixed version 
 
     stack build
     # for puzzles 1 to 24
-    stack exec -- aoc2019-exe +RTS -N 12 -qn 6 -A 32m -RTS
+    stack exec -- aoc2019-exe +RTS -N12 -qn6 -A32m -RTS
     # for the gameserver for puzzle 25
-    stack exec -- aoc2019-exe +RTS -N 12 -qn 6 -A 32m -RTS 25
+    stack exec -- aoc2019-exe +RTS -N12 -qn6 -A32m -RTS 25
