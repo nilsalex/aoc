@@ -11,5 +11,5 @@ Otherwise, days 1 to 24 are solved.
 
 Building via stack is recommended, since the library depends on a fixed version of PSQueue (see `stack.yaml`):
 
-```stack build```
-```stack exec -- aoc-exe +RTS -N [number of cores] -qn [N `div` 2] -A32m -RTS```
+    stack build
+    stack exec -- aoc-exe +RTS -N [number of cores] -qn [N `div` 2] -A32m -RTS
