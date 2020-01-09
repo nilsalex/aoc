@@ -207,15 +207,18 @@ a19_ans2 (prog, nThreads) = (\(x,y) -> 10000*x + y) $ case ress of
     res s = let (HALT,_,_,_,_,Buffer ob) = snd $ runState eval $ s
             in head ob
 
-    chunk = (2000 * 2000) `div` nThreads
+    xRange = [900..1099]
+    yRange = [450..599]
+
+    chunk = (length xRange * length yRange) `div` nThreads
 
     tracts = S.fromList $ catMaybes $
              withStrategy (parListChunk chunk rdeepseq) $
              (\x y -> case res (s0 x y) of
                          0 -> Nothing
-                         _ -> Just (x,y)) <$> [0..1999] <*> [0..1999]
+                         _ -> Just (x,y)) <$> xRange <*> yRange
 
-    cands = fmap snd $ sort $ (\x y -> (x*x + y*y, (x,y))) <$> [0..1899] <*> [0..1899]
+    cands = fmap snd $ sort $ (\x y -> (x*x + y*y, (x,y))) <$> [900..999] <*> [400..499]
 
     ress = fmap fst $ filter snd $ fmap (\(x,y) -> ((x,y), fit 100 100 x y)) cands
 

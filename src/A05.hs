@@ -64,30 +64,28 @@ op pos xs
 
     b i = i /= 0
 
-runOp :: Op -> Int -> S.Seq Int -> IO (Either (S.Seq Int) (Int, S.Seq Int))
-runOp op pos xs =
+runOp :: Op -> Int -> S.Seq Int -> [Int] -> IO ([Int], Either (S.Seq Int) (Int, S.Seq Int))
+runOp op pos xs stack@(input,stack') =
     case op of
-      Add a b c ma mb mc  -> pure $ Right $ (pos + 4, write c mc $ look a ma + look b mb)
-      Mult a b c ma mb mc -> pure $ Right $ (pos + 4, write c mc $ look a ma * look b mb)
-      Get a ma            -> do
-                              s <- getLine
-                              pure $ Right $ (pos + 2, write a ma (read s :: Int))
+      Add a b c ma mb mc  -> pure (stack, Right (pos + 4, write c mc $ look a ma + look b mb))
+      Mult a b c ma mb mc -> pure (stack, Right (pos + 4, write c mc $ look a ma * look b mb))
+      Get a ma            -> pure (stack', Right (pos + 2, write a ma input))
       Put a ma            -> do
                               print $ look a ma
-                              pure $ Right (pos + 2, xs)
+                              pure (stack, Right (pos + 2, xs))
       JumpIf a b ma mb    -> case look a ma of
-                              0 -> pure $ Right (pos + 3, xs)
-                              _ -> pure $ Right (look b mb, xs)
+                              0 -> pure (stack, Right (pos + 3, xs))
+                              _ -> pure (stack, Right (look b mb, xs))
       JumpIfNot a b ma mb -> case look a ma of
-                              0 -> pure $ Right (look b mb, xs)
-                              _ -> pure $ Right (pos + 3, xs)
-      Less a b c ma mb mc -> pure $ Right $ (pos + 4, write c mc $ case look a ma < look b mb of
-                                                                     True  -> 1
-                                                                     False -> 0)
-      Equals a b c ma mb mc -> pure $ Right $ (pos + 4, write c mc $ case look a ma == look b mb of
-                                                                       True  -> 1
-                                                                       False -> 0)
-      Stop                -> pure $ Left xs
+                              0 -> pure (stack, Right (look b mb, xs))
+                              _ -> pure (stack, Right (pos + 3, xs))
+      Less a b c ma mb mc -> pure (stack, Right (pos + 4, write c mc $ case look a ma < look b mb of
+                                                                         True  -> 1
+                                                                         False -> 0))
+      Equals a b c ma mb mc -> pure (stack, Right (pos + 4, write c mc $ case look a ma == look b mb of
+                                                                           True  -> 1
+                                                                         False -> 0))
+      Stop                -> pure (stack, Left xs)
   where
     look i mi = case mi of
                   True -> i
@@ -96,15 +94,15 @@ runOp op pos xs =
                      True -> error ""
                      False -> S.update i v xs
 
-run :: S.Seq Int -> IO (Int, S.Seq Int)
-run = run' 0
+run :: S.Seq Int -> [Int] -> IO ([Int], Int, S.Seq Int)
+run xs stack = run' 0 xs stack
 
 run' :: Int -> S.Seq Int -> IO (Int, S.Seq Int)
-run' pos xs = do
-               r <- runOp o pos xs
-               case r of
-                 Left xs' -> return (pos, xs')
-                 Right (pos', xs') -> run' pos' xs'
+run' pos xs stack = do
+                     (stack',r) <- runOp o pos xs
+                     case r of
+                       Left xs' -> return (stack', pos, xs')
+                       Right (pos', xs') -> run' pos' xs' stack'
   where
     o = op pos xs
 

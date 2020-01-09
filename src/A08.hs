@@ -47,5 +47,5 @@ a08_ans2 image = unlines drawn
   where
      dec = decode image
      drawn = fmap (fmap (\x -> case x of
-                                 0 -> '\x25A0'
-                                 1 -> '\x25A1')) dec
+                                 0 -> '\x2B1B'
+                                 1 -> '\x2B1C')) dec
