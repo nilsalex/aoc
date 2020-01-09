@@ -2,30 +2,19 @@
 
 module A25 (a25) where
 
-import Debug.Trace (trace)
-
-import System.Console.ANSI
-
-import System.IO
 import Network.Socket
 import Network.Socket.ByteString (recv, sendAll)
 
-import qualified Data.ByteString as BS
 import Data.ByteString.Char8 (pack,unpack)
-
-import Data.Maybe (catMaybes)
 
 import Control.Concurrent (forkFinally)
 import qualified Control.Exception as E
 
-import Control.Monad (unless, forever, void, guard, when)
+import Control.Monad (forever, void)
 import Control.Monad.Trans
 import Control.Monad.Trans.State.Lazy
 import Data.Char (ord,chr)
-import Data.Foldable (toList,foldl')
 import qualified Data.Sequence as S
-import qualified Data.Map.Strict as M
-import qualified Data.Set as SET
 
 data Op = Add Int Int Int Mode Mode Mode |
           Mult Int Int Int Mode Mode Mode |
@@ -161,78 +150,27 @@ convProgramme = Programme . S.fromList . fmap read . splitAt' ','
 loadProgramme :: String -> IO Programme
 loadProgramme = fmap convProgramme . readFile
 
-chunksOf :: Int -> [a] -> [[a]]
-chunksOf _ [] = []
-chunksOf n xs = take n xs : chunksOf n (drop n xs)
-
-type Pos = (Int,Int)
-type Dir = (Int,Int)
-type Visited = M.Map String Pos
-
-parseDir :: String -> Maybe Dir
-parseDir xs
-  | take 5 xs == "north" = Just (0,-1)
-  | take 5 xs == "south" = Just (0,1)
-  | take 4 xs == "west" = Just (-1,0)
-  | take 4 xs == "east" = Just (1,0)
-  | otherwise = Nothing
-
-walk :: Dir -> Pos -> Pos
-walk (xd,yd) (x,y) = (xd+x,yd+y)
-
-updateGui :: Pos -> Visited -> String -> String -> IO (Pos,Visited)
-updateGui p vs output input =
-    case location of
-      []   -> return (p,vs)
-      l:_  -> case M.lookup l vs of
-              Nothing -> case input of
-                           "" -> do
-                                  setCursorPosition 15 15
-                                  putChar '.'
-                                  setCursorPosition 15 15
-                                  return ((0,0), M.insert l (0,0) vs)
-                           _  -> case dir of
-                                  Nothing -> error ""
-                                  Just d  -> do
-                                              let p'@(x,y) = walk d p
-                                              let vs' = M.insert l p' vs
-                                              setCursorPosition (y+15) (x+15)
-                                              putChar '.'
-                                              setCursorPosition (y+15) (x+15)
-                                              return (p',vs')
-              Just p'@(x,y) -> do
-                                setCursorPosition (15+y) (15+x)
-                                return (p',vs)
-  where
-    dir = parseDir input
-    location = filter ((== "==") . take 2) $ lines output
-
-play :: Socket -> Pos -> Visited -> String -> StateT ProgState IO ()
-play s p vs lastIn =
+play :: Socket -> StateT ProgState IO ()
+play s =
     do
         Buffer ob <- eval
         let ob' = fmap chr $ reverse ob
-        (p',vs') <- lift $ updateGui p vs ob' lastIn
         lift $ sendAll s $ pack $ ob'
         msg <- lift $ fmap unpack $ recv s 1024
         let ib = filter (/= 13) $ fmap ord msg
         modify (\(x1,x2,x3,x4,Buffer ib',_) -> (x1,x2,x3,x4,Buffer $ ib' ++ ib,Buffer []))
-        play s p' vs' msg
+        play s
 
 a25 :: IO ()
 a25 = do
        Programme prog' <- loadProgramme fileName
        let prog = Programme $ prog' S.>< S.replicate 10000 0
        let s0 = (RUN,0,0,prog,Buffer [],Buffer [])
-       hSetBuffering stdout NoBuffering
-       clearScreen
-       setCursorPosition 0 0
-       mapM_ putStrLn $ take 31 $ repeat (take 31 $ repeat '#')
-       setCursorPosition 15 15
-       putChar '.'
-       setCursorPosition 15 15
 
-       runTCPServer Nothing "3000" (\s -> evalStateT (play s (0,0) M.empty "") $ s0)
+       putStrLn "Game server running. Connect with 'telnet localhost 3000'"
+       putStrLn "Close with Ctrl-C"
+
+       runTCPServer Nothing "3000" (\s -> evalStateT (play s) $ s0)
 
 runTCPServer :: Maybe HostName -> ServiceName -> (Socket -> IO a) -> IO a
 runTCPServer mhost port server = withSocketsDo $ do

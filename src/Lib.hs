@@ -1,9 +1,7 @@
 module Lib
-    ( someFunc
+    ( a01_to_a24,
+      a25
     ) where
-
-import System.IO
-import Control.Monad (foldM_)
 
 import A01
 import A02
@@ -31,8 +29,8 @@ import A23
 import A24
 import A25
 
-someFunc :: IO ()
-someFunc = do
+a01_to_a24 :: IO ()
+a01_to_a24 = do
             a01_i <- a01_input
             putStrLn "Day 1:"
             putStrLn $ "Answer 1 : " ++ (show $ a01_ans1 a01_i)
@@ -55,21 +53,11 @@ someFunc = do
             putStrLn $ "Answer 1 : " ++ (show a04_ans1)
             putStrLn $ "Answer 2 : " ++ (show a04_ans2)
 
-{-
             a05_i <- a05_input
             putStrLn ""
             putStrLn "Day 5:"
-            putStrLn $ "Run 1 : "
-            putStr "Enter 1 : "
-            hFlush stdout
-            res <- a05_run a05_i
-            
-            putStrLn ""
-            putStrLn $ "Run 2 : "
-            putStr "Enter 5 : "
-            hFlush stdout
-            res <- a05_run a05_i
--}
+            putStrLn $ "Answer 1 : " ++ (show $ a05_ans1 a05_i)
+            putStrLn $ "Answer 2 : " ++ (show $ a05_ans2 a05_i)
 
             a06_i <- a06_input
             putStrLn ""
@@ -114,12 +102,11 @@ someFunc = do
             putStrLn $ "Answer 1 : " ++ (show a12_ans1)
             putStrLn $ "Answer 2 : " ++ (show a12_ans2)
 
-{-
+            a13_i <- a13_input
             putStrLn ""
             putStrLn "Day 13:"
-            a13_i <- a13_input
-            game a13_i
--}
+            putStrLn $ "Answer 1 : " ++ (show $ a13_ans1 a13_i)
+            putStrLn $ "Answer 2 : " ++ (show $ a13_ans2 a13_i)
 
             a14_i <- a14_input
             putStrLn ""
@@ -186,7 +173,3 @@ someFunc = do
             putStrLn "Day 24:"
             putStrLn $ "Answer 1 : " ++ (show $ a24_ans1 a24_i)
             putStrLn $ "Answer 2 : " ++ (show $ a24_ans2 a24_i)
-
---            a25
-
-            return ()

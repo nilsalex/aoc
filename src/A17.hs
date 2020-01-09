@@ -1,7 +1,7 @@
 module A17 (a17_input,a17_ans1,a17_ans2) where
 
 import Data.Char (chr,ord)
-import Data.List (foldl',tails,intersperse)
+import Data.List (foldl',intersperse)
 import qualified Data.Sequence as S
 
 newtype State s a = State { runState :: s -> (a, s) }

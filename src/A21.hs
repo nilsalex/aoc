@@ -1,8 +1,6 @@
 module A21 (a21_input,a21_ans1,a21_ans2) where
 
-import Data.Char (chr,ord)
-import Debug.Trace (trace)
-import Data.List (sort)
+import Data.Char (ord)
 import qualified Data.Sequence as S
 
 newtype State s a = State { runState :: s -> (a, s) }

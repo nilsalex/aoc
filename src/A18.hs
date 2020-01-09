@@ -5,7 +5,7 @@ import Prelude hiding (lookup,truncate)
 import qualified Data.PSQueue as PSQ
 
 import Data.Maybe (catMaybes)
-import Data.List (foldl',minimumBy)
+import Data.List (foldl')
 import qualified Data.Bits as B
 
 import qualified Data.Set as S
@@ -14,8 +14,6 @@ import qualified Data.Map.Strict as M
 import Control.Monad (guard)
 
 import Data.Char (toLower,ord)
-
-import Debug.Trace (trace)
 
 type Map = String
 type Bounds = ((Int,Int), (Int,Int))

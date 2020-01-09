@@ -1,13 +1,9 @@
 module A23 (a23_input,a23_ans1,a23_ans2) where
 
-import Debug.Trace (trace)
-
-import Control.Monad.Trans
 import Control.Monad.Trans.State.Lazy
-import Data.Foldable (toList,foldl')
+import Data.Foldable (foldl')
 import qualified Data.Sequence as S
 import qualified Data.Map.Strict as M
-import qualified Data.Set as SET
 
 data Op = Add Int Int Int Mode Mode Mode |
           Mult Int Int Int Mode Mode Mode |

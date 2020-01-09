@@ -3,7 +3,6 @@ module A20 (a20_input,a20_ans1,a20_ans2) where
 import qualified Data.Set as S
 import qualified Data.Map.Strict as M
 import Data.List (foldl',sort,groupBy,sortBy)
-import Debug.Trace (trace)
 import Data.Char (isAsciiUpper)
 import Control.Monad (guard)
 import Data.Maybe (catMaybes)

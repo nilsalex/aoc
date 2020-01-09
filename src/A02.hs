@@ -1,7 +1,5 @@
 module A02 (a02_input, a02_ans1, a02_ans2) where
 
-import qualified Data.Sequence as S
-
 stop :: Int
 stop = 99
 

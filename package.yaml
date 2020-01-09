@@ -14,13 +14,12 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
-- ansi-terminal
-- deepseq
 - containers
-- PSQueue
-- parallel
-- transformers
 - mtl
+- transformers
+- parallel
+- PSQueue
+- deepseq
 - network
 - bytestring
 
@@ -28,6 +27,7 @@ library:
   source-dirs: src
   ghc-options:
     - -O2
+    - -fwarn-unused-imports
 
 executables:
   aoc-exe:
@@ -38,5 +38,6 @@ executables:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -fwarn-unused-imports
     dependencies:
     - aoc

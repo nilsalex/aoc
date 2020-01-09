@@ -2,18 +2,15 @@
 
 module A19 (a19_input,a19_ans1,a19_ans2) where
 
-import Control.DeepSeq (deepseq)
 import GHC.Conc (getNumCapabilities)
 
 import Control.Parallel.Strategies
 
-import Data.List (foldl',sort)
+import Data.List (sort)
 import qualified Data.Sequence as SQ
 
 import qualified Data.Set as S
 import Data.Maybe (catMaybes)
-
-import Debug.Trace
 
 newtype State s a = State { runState :: s -> (a, s) }
 

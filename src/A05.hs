@@ -1,110 +1,151 @@
-module A05 (a05_run,a05_input) where
+module A05 (a05_input,a05_ans1,a05_ans2) where
 
 import qualified Data.Sequence as S
 
-data Op = Add Int Int Int Bool Bool Bool |
-          Mult Int Int Int Bool Bool Bool |
-          Get Int Bool |
-          Put Int Bool |
-          JumpIf Int Int Bool Bool |
-          JumpIfNot Int Int Bool Bool |
-          Less Int Int Int Bool Bool Bool |
-          Equals Int Int Int Bool Bool Bool |
+newtype State s a = State { runState :: s -> (a, s) }
+
+getS :: State s s
+getS = State $ \s -> (s, s)
+
+putS :: s -> State s ()
+putS s = State $ \_ -> ((), s)
+
+modifyS :: (s -> s) -> State s ()
+modifyS f = State $ \s -> ((), f s)
+
+instance Functor (State s) where
+  fmap f (State g) = State $ \s -> let (a', s') = g s
+                                   in (f a', s')
+
+instance Applicative (State s) where
+  pure a = State $ \s -> (a, s)
+  State fs <*> State g =
+    State $ \s -> let (fa, s') = fs s
+                      (a, s'') = g s'
+                  in (fa a, s'')
+
+instance Monad (State s) where
+  return = pure
+  State f >>= g = State $ \s -> let (a', s') = f s
+                                in runState (g a') s'
+                                
+data Op = Add Int Int Int Mode Mode Mode |
+          Mult Int Int Int Mode Mode Mode |
+          Get Int Mode |
+          Put Int Mode |
+          JumpIf Int Int Mode Mode |
+          JumpIfNot Int Int Mode Mode |
+          Less Int Int Int Mode Mode Mode |
+          Equals Int Int Int Mode Mode Mode |
+          Base Int Mode |
           Stop
 
-add :: Int
-add = 1
+data Mode = POS | PAR | REL deriving Show
 
-mult :: Int
-mult = 2
+mode :: Int -> Mode
+mode 0 = POS
+mode 1 = PAR
+mode 2 = REL
 
-get :: Int
-get = 3
-
-put :: Int
-put = 4
-
-jumpIf :: Int
-jumpIf = 5
-
-jumpIfNot :: Int
-jumpIfNot = 6
-
-less :: Int
-less = 7
-
-equals :: Int
-equals = 8
-
-stop :: Int
-stop = 99
-
-op :: Int -> S.Seq Int -> Op
-op pos xs
-    | o == add = Add p1 p2 p3 b1 b2 b3
-    | o == mult = Mult p1 p2 p3 b1 b2 b3
-    | o == get = Get p1 b1
-    | o == put = Put p1 b1
-    | o == jumpIf = JumpIf p1 p2 b1 b2
-    | o == jumpIfNot = JumpIfNot p1 p2 b1 b2
-    | o == less = Less p1 p2 p3 b1 b2 b3
-    | o == equals = Equals p1 p2 p3 b1 b2 b3
-    | o == stop = Stop
+op :: Int -> Programme -> Op
+op pos (Programme xs)
+    | o == 1 = Add p1 p2 p3 m1 m2 m3
+    | o == 2 = Mult p1 p2 p3 m1 m2 m3
+    | o == 3 = Get p1'' m1
+    | o == 4 = Put p1'' m1
+    | o == 5 = JumpIf p1' p2' m1 m2
+    | o == 6 = JumpIfNot p1' p2' m1 m2
+    | o == 7 = Less p1 p2 p3 m1 m2 m3
+    | o == 8 = Equals p1 p2 p3 m1 m2 m3
+    | o == 9 = Base p1 m1
+    | o == 99 = Stop
+    | otherwise = error "Unknown op code"
   where
     x = S.index xs pos
-    m1 = x `div` 10000
-    m2 = (x `mod` 10000) `div` 1000
-    m3 = ((x `mod` 10000) `mod` 1000) `div` 100
+    m3 = mode $ x `div` 10000
+    m2 = mode $ (x `mod` 10000) `div` 1000
+    m1 = mode $ ((x `mod` 10000) `mod` 1000) `div` 100
     o  = (((x `mod` 10000) `mod` 1000) `mod` 100)
 
-    [b3, b2, b1] = fmap b [m1, m2, m3]
     p1 = S.index xs (pos+1)
     p2 = S.index xs (pos+2)
     p3 = S.index xs (pos+3)
 
+    p1' = S.index xs (pos+1)
+    p2' = S.index xs (pos+2)
+
+    p1'' = S.index xs (pos+1)
+
     b i = i /= 0
 
-runOp :: Op -> Int -> S.Seq Int -> [Int] -> IO ([Int], Either (S.Seq Int) (Int, S.Seq Int))
-runOp op pos xs stack@(input,stack') =
-    case op of
-      Add a b c ma mb mc  -> pure (stack, Right (pos + 4, write c mc $ look a ma + look b mb))
-      Mult a b c ma mb mc -> pure (stack, Right (pos + 4, write c mc $ look a ma * look b mb))
-      Get a ma            -> pure (stack', Right (pos + 2, write a ma input))
-      Put a ma            -> do
-                              print $ look a ma
-                              pure (stack, Right (pos + 2, xs))
-      JumpIf a b ma mb    -> case look a ma of
-                              0 -> pure (stack, Right (pos + 3, xs))
-                              _ -> pure (stack, Right (look b mb, xs))
-      JumpIfNot a b ma mb -> case look a ma of
-                              0 -> pure (stack, Right (look b mb, xs))
-                              _ -> pure (stack, Right (pos + 3, xs))
-      Less a b c ma mb mc -> pure (stack, Right (pos + 4, write c mc $ case look a ma < look b mb of
-                                                                         True  -> 1
-                                                                         False -> 0))
-      Equals a b c ma mb mc -> pure (stack, Right (pos + 4, write c mc $ case look a ma == look b mb of
-                                                                           True  -> 1
-                                                                         False -> 0))
-      Stop                -> pure (stack, Left xs)
-  where
-    look i mi = case mi of
-                  True -> i
-                  False -> S.index xs i
-    write i mi v = case mi of
-                     True -> error ""
-                     False -> S.update i v xs
+newtype Programme = Programme { fromProgramme :: S.Seq Int } deriving Show
+newtype Buffer    = Buffer { fromBuffer :: [Int] } deriving Show
+data Code      = RUN | WAIT | OUT | HALT deriving Show
+type ProgState = (Code, Int, Int, Programme, Buffer, Buffer)
 
-run :: S.Seq Int -> [Int] -> IO ([Int], Int, S.Seq Int)
-run xs stack = run' 0 xs stack
+appendIBuf :: Int -> State ProgState ()
+appendIBuf i = modifyS (\(x1,x2,x3,x4,Buffer is,x5) -> (x1,x2,x3,x4,Buffer (i:is),x5))
 
-run' :: Int -> S.Seq Int -> IO (Int, S.Seq Int)
-run' pos xs stack = do
-                     (stack',r) <- runOp o pos xs
-                     case r of
-                       Left xs' -> return (stack', pos, xs')
-                       Right (pos', xs') -> run' pos' xs' stack'
+readOBuf :: State ProgState Buffer
+readOBuf = do
+            (x1,x2,x3,x4,x5,os) <- getS
+            putS (x1,x2,x3,x4,x5,Buffer [])
+            return os
+
+eval :: State ProgState Code
+eval =
+  do
+     (code, ip, bp, prog, istack, ostack) <- getS
+     case code of
+       HALT -> return HALT
+       _    -> 
+         let o = op ip prog in
+         case o of
+           Stop ->
+             putS (HALT, ip, bp, prog, istack, ostack) >> return HALT
+           Put a ma ->
+             case fromBuffer ostack of
+               -- _:_:[] -> putS (OUT, ip + 2, bp, prog, istack, Buffer $ look a ma bp prog : fromBuffer ostack) >> return OUT
+               _      -> putS (RUN, ip + 2, bp, prog, istack, Buffer $ look a ma bp prog : fromBuffer ostack) >> eval
+           Get a ma ->
+             case fromBuffer istack of
+               [] -> putS (WAIT, ip, bp, prog, istack, ostack) >> return WAIT
+               (i:is) -> putS (RUN, ip + 2, bp, write a ma bp i prog, Buffer is, ostack) >> eval
+           Add a b c ma mb mc ->
+             putS (RUN, ip + 4, bp, write c mc bp (look a ma bp prog + look b mb bp prog) prog, istack, ostack) >> eval
+           Mult a b c ma mb mc ->
+             putS (RUN, ip + 4, bp, write c mc bp (look a ma bp prog * look b mb bp prog) prog, istack, ostack) >> eval
+           Less a b c ma mb mc ->
+             putS (RUN, ip + 4, bp, write c mc bp (i $ look a ma bp prog < look b mb bp prog) prog, istack, ostack) >> eval
+           Equals a b c ma mb mc ->
+             putS (RUN, ip + 4, bp, write c mc bp (i $ look a ma bp prog == look b mb bp prog) prog, istack, ostack) >> eval
+           JumpIf a b ma mb ->
+             case toB $ look a ma bp prog of
+               True -> putS (RUN, look b mb bp prog, bp, prog, istack, ostack) >> eval
+               False -> putS (RUN, ip + 3, bp, prog, istack, ostack) >> eval
+           JumpIfNot a b ma mb ->
+             case toB $ look a ma bp prog of
+               False -> putS (RUN, look b mb bp prog, bp, prog, istack, ostack) >> eval
+               True -> putS (RUN, ip + 3, bp, prog, istack, ostack) >> eval
+           Base a ma ->
+             putS (RUN, ip + 2, bp + look a ma bp prog, prog, istack, ostack) >> eval
+
   where
-    o = op pos xs
+
+    look i mi b (Programme xs) = case mi of
+                                   POS -> S.index xs i
+                                   PAR -> i
+                                   REL -> S.index xs (b + i)
+
+    write i mi b v (Programme xs) = Programme $
+                                      case mi of
+                                        POS -> S.update i v xs
+                                        REL -> S.update (b+i) v xs
+                                        PAR -> error "cannot write in parameter mode"
+
+    i False = 0
+    i True  = 1
+    toB i = i /= 0
 
 modify :: Int -> (a -> a) -> [a] -> [a]
 modify i f [] = []
@@ -122,17 +163,26 @@ splitAt' d xs = case word of
 fileName :: String
 fileName = "data/a05/input.txt"
 
-convProgramme :: String -> S.Seq Int
-convProgramme = S.fromList . fmap read . splitAt' ','
+convProgramme :: String -> Programme
+convProgramme = Programme . S.fromList . fmap read . splitAt' ','
 
-loadProgramme :: String -> IO (S.Seq Int)
+loadProgramme :: String -> IO Programme
 loadProgramme = fmap convProgramme . readFile
 
-a05_input :: IO (S.Seq Int)
+a05_input :: IO Programme
 a05_input = loadProgramme fileName
 
-prepare :: Int -> Int -> [Int] -> [Int]
-prepare n v (x:_:_:xs) = x:n:v:xs
+a05_ans1 :: Programme -> Int
+a05_ans1 (Programme prog') = o
+  where
+    prog = Programme $ prog' S.>< S.replicate 100 0
+    s0 = (RUN,0,0,prog,Buffer [1],Buffer [])
+    (_,(_,_,_,_,_,Buffer (o:_))) = runState eval $ s0
+    
 
-a05_run :: (S.Seq Int) -> IO Int
-a05_run = fmap ((\xs -> S.index xs 0) . snd) . run
+a05_ans2 :: Programme -> Int
+a05_ans2 (Programme prog') = o
+  where
+    prog = Programme $ prog' S.>< S.replicate 100 0
+    s0 = (RUN,0,0,prog,Buffer [5],Buffer [])
+    (_,(_,_,_,_,_,Buffer (o:_))) = runState eval $ s0
