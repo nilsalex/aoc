@@ -1,16 +1,16 @@
-name:                aoc
+name:                aoc2019
 version:             0.1.0.0
-github:              "nilsalex/aoc"
-license:             BSD3
+github:              "nilsalex/aoc2019"
+license:             MIT
 author:              "Nils Alex"
-maintainer:          "nils@famalex.de"
-copyright:           "2019 Nils Alex"
+maintainer:          "nils [at] famalex (tld for germany)"
+copyright:           "2020 Nils Alex"
 
 extra-source-files:
 - README.md
 - ChangeLog.md
 
-description:         Please see the README on GitHub at <https://github.com/githubuser/aoc#readme>
+description:         Please see the README on GitHub at <https://github.com/githubuser/aoc2019#readme>
 
 dependencies:
 - base >= 4.7 && < 5
@@ -30,7 +30,7 @@ library:
     - -fwarn-unused-imports
 
 executables:
-  aoc-exe:
+  aoc2019-exe:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
@@ -40,4 +40,4 @@ executables:
     - -with-rtsopts=-N
     - -fwarn-unused-imports
     dependencies:
-    - aoc
+    - aoc2019
